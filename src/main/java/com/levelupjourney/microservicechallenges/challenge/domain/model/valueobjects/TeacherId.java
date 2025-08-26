@@ -1,4 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects;
 
-public record Star(StudentId userId, ChallengeId challengeId) {
+import java.util.UUID;
+
+public record TeacherId(UUID id) {
 }

@@ -2,5 +2,5 @@ package com.levelupjourney.microservicechallenges.challenge.domain.model.valueob
 
 import java.util.UUID;
 
-public record UserId(UUID id) {
+public record StudentId(UUID id) {
 }
