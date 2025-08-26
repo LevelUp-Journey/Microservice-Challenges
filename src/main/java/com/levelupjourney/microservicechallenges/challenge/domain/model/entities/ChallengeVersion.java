@@ -4,7 +4,7 @@ import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobj
 
 public class ChallengeVersion {
     private Language version;
-    private String defaultCode;
+    private String defaultStudentCode;
 
     private Test[] tests;
 }
