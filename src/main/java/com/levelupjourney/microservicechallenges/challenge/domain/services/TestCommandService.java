@@ -1,18 +1,11 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.services;
 
-import com.levelupjourney.microservicechallenges.challenge.domain.model.aggregates.Challenge;
-import com.levelupjourney.microservicechallenges.challenge.domain.model.aggregates.Test;
-import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.AddTestToChallengeCommand;
-import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.PublishChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.RemoveTestFromChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.StarChallengeByStudentIdCommand;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.commands.UnStarChallengeByStudentIdCommand;
-import java.util.Optional;
 
-public interface ChallengeCommandService {
-    public Optional<Test> handle(AddTestToChallengeCommand command);
-    public Optional<Challenge> handle(CreateChallengeCommand command);
+public interface TestCommandService {
     public void handle(PublishChallengeCommand command);
     public void handle(RemoveTestFromChallengeCommand command);
     public void handle(StarChallengeByStudentIdCommand command);

@@ -1,8 +1,9 @@
-package com.levelupjourney.microservicechallenges.challenge.domain.model.entities;
+package com.levelupjourney.microservicechallenges.challenge.domain.model.aggregates;
 
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.TestId;
 
 public class Test {
+
     private TestId id;
     private String title;
     private String hint;
