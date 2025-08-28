@@ -12,6 +12,5 @@ public class PassedTests {
         name = "solution_passed_tests",
         joinColumns = @JoinColumn(name = "solution_id")
     )
-    @AttributeOverride(name = "id", column = @Column(name = "test_id", columnDefinition = "uuid"))
     private List<TestId> testIds;
 }

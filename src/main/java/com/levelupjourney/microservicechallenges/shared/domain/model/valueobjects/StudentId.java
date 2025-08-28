@@ -5,5 +5,5 @@ import jakarta.persistence.Embeddable;
 import java.util.UUID;
 
 @Embeddable
-public record StudentId(@Column(columnDefinition = "uuid") UUID id) {
+public record StudentId(UUID id) {
 }

@@ -16,10 +16,8 @@ public class Challenge {
     private ChallengeId id;
 
     @Embedded
-    @AttributeOverride(name = "id", column = @Column(name = "teacher_id", columnDefinition = "uuid"))
     private TeacherId teacherId;
 
-    @Column(nullable = false)
     private String title;
 
     private String description;
@@ -35,6 +33,5 @@ public class Challenge {
     private List<ChallengeVersion> versions;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ChallengeState state;
 }
