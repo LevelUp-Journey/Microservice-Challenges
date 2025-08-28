@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobj
 import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
 import jakarta.persistence.*;
+import jakarta.persistence.AttributeOverride;
 import java.util.List;
 
 @Entity
@@ -15,6 +16,7 @@ public class Challenge {
     private ChallengeId id;
 
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "teacher_id", columnDefinition = "uuid"))
     private TeacherId teacherId;
 
     @Column(nullable = false)
@@ -25,15 +27,11 @@ public class Challenge {
     @ElementCollection
     @CollectionTable(
         name = "challenge_stars",
-        joinColumns = @JoinColumn(name = "challenge_id")
+        joinColumns = @JoinColumn(name = "owner_challenge_id")
     )
     private List<Star> stars;
 
-    @ElementCollection
-    @CollectionTable(
-        name = "challenge_versions",
-        joinColumns = @JoinColumn(name = "challenge_id")
-    )
+    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChallengeVersion> versions;
 
     @Enumerated(EnumType.STRING)

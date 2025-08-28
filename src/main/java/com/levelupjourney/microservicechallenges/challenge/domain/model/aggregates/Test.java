@@ -1,12 +1,13 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.aggregates;
 
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.TestId;
+import com.levelupjourney.microservicechallenges.challenge.domain.model.entities.ChallengeVersion;
 import jakarta.persistence.*;
 
-@Embeddable
+@Entity
 public class Test {
 
-    @Embedded
+    @EmbeddedId
     private TestId id;
 
     private String title;
@@ -18,4 +19,8 @@ public class Test {
     private String input;
 
     private String expectedOutput;
+
+    @ManyToOne
+    @JoinColumn(name = "challenge_version_id", nullable = false)
+    private ChallengeVersion challengeVersion;
 }
