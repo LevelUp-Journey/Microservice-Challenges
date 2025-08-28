@@ -1,4 +1,10 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.commands;
 
-public record StarChallengeByStudentIdCommand() {
+import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
+import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.StudentId;
+
+public record StarChallengeByStudentIdCommand(
+        ChallengeId challengeId,
+        StudentId studentId
+) {
 }
