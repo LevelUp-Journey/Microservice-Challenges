@@ -1,6 +1,9 @@
 package com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import java.util.UUID;
 
-public record StudentId(UUID id) {
+@Embeddable
+public record StudentId(@Column(columnDefinition = "uuid") UUID id) {
 }
