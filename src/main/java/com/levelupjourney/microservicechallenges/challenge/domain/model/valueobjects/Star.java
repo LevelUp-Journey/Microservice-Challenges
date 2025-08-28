@@ -7,9 +7,11 @@ import jakarta.persistence.*;
 @Embeddable
 public record Star(
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "user_id"))
     StudentId userId,
     
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "challenge_id"))
     ChallengeId challengeId
 ) {
 }

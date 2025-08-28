@@ -14,9 +14,11 @@ public class Solution {
     private SolutionId id;
 
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "student_id"))
     private StudentId studentId;
 
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "challenge_id"))
     private ChallengeId challengeId;
 
     @Enumerated(EnumType.STRING)

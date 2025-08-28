@@ -16,6 +16,7 @@ public class Challenge {
     private ChallengeId id;
 
     @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "teacher_id"))
     private TeacherId teacherId;
 
     private String title;

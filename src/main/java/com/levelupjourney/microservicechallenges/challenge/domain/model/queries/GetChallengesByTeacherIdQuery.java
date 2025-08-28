@@ -1,4 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.queries;
 
-public class GetChallengesByTeacherIdQuery {
+import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects.TeacherId;
+
+public record GetChallengesByTeacherIdQuery(TeacherId teacherId) {
 }
