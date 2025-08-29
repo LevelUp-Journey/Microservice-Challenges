@@ -1,5 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenge.interfaces.rest;
 
+import com.levelupjourney.microservicechallenges.challenge.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenge.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenge.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenge.interfaces.rest.resources.*;
@@ -84,7 +85,7 @@ public class ChallengeController {
     @GetMapping("/{challengeId}")
     public ResponseEntity<ChallengeResource> getChallengeById(@PathVariable String challengeId) {
         try {
-            var query = ChallengeQueryFromParametersAssembler.toGetChallengeByIdQuery(challengeId);
+            GetChallengeByIdQuery query = ChallengeQueryFromParametersAssembler.toGetChallengeByIdQuery(challengeId);
             var result = challengeQueryService.handle(query);
             
             if (result.isPresent()) {
