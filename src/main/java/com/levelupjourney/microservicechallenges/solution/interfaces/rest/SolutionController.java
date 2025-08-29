@@ -181,7 +181,7 @@ public class SolutionController {
     }
 
     // GET /api/v1/solutions/student/{studentId}/challenge/{challengeId} - Get student solution for challenge
-    @GetMapping("/student/{studentId}/challenge/{challengeId}")
+    @GetMapping("/students/{studentId}/challenges/{challengeId}")
     @Operation(summary = "Get student's solution for challenge", description = "Retrieves a specific student's solution for a particular challenge")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Solution found and retrieved successfully"),
