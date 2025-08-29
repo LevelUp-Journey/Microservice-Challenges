@@ -1,12 +1,14 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.commands;
 
-import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
+import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.TestId;
 
 public record UpdateTestCommand(
-        ChallengeId challengeId,
-        String testId,
+        TestId testId,
+        String title,
+        String hint,
+        String onErrorHint,
+        String testCode,
         String input,
-        String expectedOutput,
-        boolean hidden
+        String expectedOutput
 ) {
 }

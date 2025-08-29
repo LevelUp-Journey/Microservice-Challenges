@@ -1,4 +1,8 @@
 package com.levelupjourney.microservicechallenges.challenge.domain.model.commands;
 
-public record PublishChallengeCommand() {
+import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
+
+public record PublishChallengeCommand(
+        ChallengeId challengeId
+) {
 }
