@@ -19,9 +19,6 @@ import java.util.Date;
 @EntityListeners(AuditingEntityListener.class)
 @MappedSuperclass
 public class AuditableAbstractAggregateRoot<T extends AbstractAggregateRoot<T>> extends AbstractAggregateRoot<T> {
-    @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    private Long id;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
