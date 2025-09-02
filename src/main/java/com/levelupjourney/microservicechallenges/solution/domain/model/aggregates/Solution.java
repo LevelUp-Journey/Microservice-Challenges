@@ -1,5 +1,6 @@
 package com.levelupjourney.microservicechallenges.solution.domain.model.aggregates;
 
+import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.Language;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.StudentId;
@@ -14,7 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Getter
-public class Solution {
+public class Solution extends AuditableAbstractAggregateRoot<Solution> {
 
     @EmbeddedId
     private SolutionId id;

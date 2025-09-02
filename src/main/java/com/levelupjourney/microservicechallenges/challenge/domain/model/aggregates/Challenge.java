@@ -4,6 +4,7 @@ import com.levelupjourney.microservicechallenges.challenge.domain.model.entities
 import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects.ChallengeState;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects.Star;
 import com.levelupjourney.microservicechallenges.challenge.domain.model.valueobjects.TeacherId;
+import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.valueobjects.StudentId;
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ import java.util.UUID;
 
 @Entity
 @Getter
-public class Challenge {
+public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
 
     @EmbeddedId
     private ChallengeId id;
