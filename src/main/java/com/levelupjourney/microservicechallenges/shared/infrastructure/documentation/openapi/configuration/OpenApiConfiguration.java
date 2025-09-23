@@ -18,12 +18,7 @@ public class OpenApiConfiguration {
         openApi.info(new io.swagger.v3.oas.models.info.Info()
                 .title(this.applicationName)
                 .description(this.applicationDescription)
-                .version(this.applicationVersion)
-                .license(new io.swagger.v3.oas.models.info.License().name("Apache 2.0")
-                .url("http://www.apache.org/licenses/LICENSE-2.0")))
-                .externalDocs(new io.swagger.v3.oas.models.ExternalDocumentation()
-                        .description("Microservice Challenges Documentation")
-                        .url("https://levelupjourney.com/docs/microservice-challenges"));
+                .version(this.applicationVersion));
 
         return openApi;
     }
