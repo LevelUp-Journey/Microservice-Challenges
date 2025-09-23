@@ -5,6 +5,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 
@@ -13,12 +14,17 @@ import java.util.List;
 @Getter
 @Entity
 public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
+    @Embedded
     private ChallengeId id;
+
+    @Embedded
     private TeacherId teacherId;
+
     private String name;
     private String description;
     private Integer experiencePoints;
     private ChallengeStatus status;
+
     private List<CodeVersion> versions;
     private List<ChallengeTag> tags;
 }
