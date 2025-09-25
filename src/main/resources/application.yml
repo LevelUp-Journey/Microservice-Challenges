@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: microservice-challenges
+
+  datasource:
+    url: jdbc:postgresql://dpg-d2nm9924d50c73b4tdgg-a.oregon-postgres.render.com:5432/challenges_bdnq
+    username: challenges_bdnq_user
+    password: pUNhvX8JI5mP6nbydOAW4ftrB022KfgC
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: com.levelupjourney.microservicechallenges.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+    open-in-view: true
+
+server:
+  port: 8082
