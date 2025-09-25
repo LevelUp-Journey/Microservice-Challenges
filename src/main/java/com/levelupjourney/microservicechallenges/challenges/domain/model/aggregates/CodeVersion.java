@@ -1,19 +1,19 @@
 package com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates;
 
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddCodeVersionCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.LazyCollection;
-import org.hibernate.annotations.LazyGroup;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Getter
+@NoArgsConstructor
 @Entity
 public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
     
@@ -33,4 +33,16 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
 
     @OneToMany(mappedBy = "codeVersionId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersionTest> tests = new ArrayList<>();
+
+    public CodeVersion(AddCodeVersionCommand command) {
+        this.id = UUID.randomUUID();
+        this.challengeId = command.challengeId();
+        this.language = command.language();
+        this.initialCode = ""; // Initial empty code
+    }
+    
+    // Business methods
+    public void updateInitialCode(String newInitialCode) {
+        this.initialCode = newInitialCode != null ? newInitialCode : "";
+    }
 }
