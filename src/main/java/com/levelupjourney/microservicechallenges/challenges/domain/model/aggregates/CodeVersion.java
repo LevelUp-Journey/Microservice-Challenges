@@ -2,24 +2,35 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.aggreg
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyGroup;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Entity
 public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
-    @Embedded
-    private CodeVersionId id;
+    
+    @Id
+    @Column(name = "code_version_id")
+    private UUID id;
 
     @Embedded
     private ChallengeId challengeId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CodeLanguage language;
+    
+    @Column(name = "initial_code", columnDefinition = "TEXT")
     private String initialCode;
-    private List<CodeVersionTest> tests;
+
+    @OneToMany(mappedBy = "codeVersionId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<CodeVersionTest> tests = new ArrayList<>();
 }

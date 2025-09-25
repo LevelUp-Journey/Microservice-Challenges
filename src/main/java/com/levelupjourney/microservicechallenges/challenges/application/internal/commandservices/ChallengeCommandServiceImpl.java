@@ -8,7 +8,6 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import org.springframework.stereotype.Service;
 
-
 @Service
 public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     @Override
@@ -30,5 +29,4 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     public void handle(UpdateChallengeCommand command) {
 
     }
-    
 }
