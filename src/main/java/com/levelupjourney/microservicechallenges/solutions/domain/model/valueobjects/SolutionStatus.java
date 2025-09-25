@@ -1,4 +1,4 @@
-package com.levelupjourney.microservicechallenges.solutionsreports.domain.model.valueobjects;
+package com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects;
 
 public enum SolutionStatus {
     SUCCESS,
