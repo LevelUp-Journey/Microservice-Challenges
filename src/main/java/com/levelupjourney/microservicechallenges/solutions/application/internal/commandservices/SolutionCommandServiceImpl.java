@@ -6,9 +6,11 @@ import com.levelupjourney.microservicechallenges.solutions.domain.model.commands
 import com.levelupjourney.microservicechallenges.solutions.domain.model.commands.UpdateSolutionCommand;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionReportId;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionCommandService;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class SolutionCommandServiceImpl implements SolutionCommandService {
     @Override
     public Optional<Solution> handle(CreateSolutionCommand command) {

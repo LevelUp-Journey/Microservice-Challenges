@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public class UpdateSolutionCommandFromResourceAssembler {
 
-    public static UpdateSolutionCommand toCommandFromResource(UpdateSolutionResource resource) {
+    public static UpdateSolutionCommand toCommandFromResource(String solutionId, UpdateSolutionResource resource) {
         return new UpdateSolutionCommand(
-            new SolutionId(UUID.fromString(resource.solutionId())),
+            new SolutionId(UUID.fromString(solutionId)),
             resource.code()
         );
     }

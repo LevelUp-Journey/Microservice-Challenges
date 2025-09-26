@@ -11,7 +11,7 @@ public class SolutionResourceFromEntityAssembler {
 
     public static SolutionResource toResourceFromEntity(Solution entity) {
         return new SolutionResource(
-            entity.getId().toString(),
+            entity.getId().value().toString(),
             entity.getChallengeId().value().toString(),
             entity.getCodeVersionId().value().toString(),
             entity.getStudentId().value().toString(),
