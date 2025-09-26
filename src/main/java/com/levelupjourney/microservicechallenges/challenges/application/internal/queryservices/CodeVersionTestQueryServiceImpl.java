@@ -2,13 +2,13 @@ package com.levelupjourney.microservicechallenges.challenges.application.interna
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersionTest;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionTestId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionTestQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.CodeVersionTestRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class CodeVersionTestQueryServiceImpl implements CodeVersionTestQueryService {
@@ -20,7 +20,7 @@ public class CodeVersionTestQueryServiceImpl implements CodeVersionTestQueryServ
     }
 
     @Override
-    public Optional<CodeVersionTest> getCodeVersionTestById(UUID testId) {
+    public Optional<CodeVersionTest> getCodeVersionTestById(CodeVersionTestId testId) {
         return codeVersionTestRepository.findById(testId);
     }
 

@@ -2,6 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.infrastructure.pers
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CodeVersionRepository extends JpaRepository<CodeVersion, UUID> {
+public interface CodeVersionRepository extends JpaRepository<CodeVersion, CodeVersionId> {
 
     // Find code versions by challenge (for AddCodeVersionCommand)
     List<CodeVersion> findByChallengeId_Value(UUID challengeId);

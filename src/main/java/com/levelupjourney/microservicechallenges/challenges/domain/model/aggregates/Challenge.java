@@ -2,6 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.aggreg
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.entities.ChallengeTag;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
@@ -18,8 +19,8 @@ import java.util.UUID;
 @Entity
 public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     
-    @Id
-    private UUID id;
+    @EmbeddedId
+    private ChallengeId id;
 
     @Embedded
     private TeacherId teacherId;
@@ -43,7 +44,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     private List<ChallengeTag> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {
-        this.id = UUID.randomUUID();
+        this.id = new ChallengeId(UUID.randomUUID());
         this.teacherId = command.teacherId();
         this.name = command.name();
         this.description = command.description();

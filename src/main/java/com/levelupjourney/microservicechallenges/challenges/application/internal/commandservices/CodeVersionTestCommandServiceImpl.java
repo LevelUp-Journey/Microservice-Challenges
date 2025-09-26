@@ -24,13 +24,13 @@ public class CodeVersionTestCommandServiceImpl implements CodeVersionTestCommand
         
         // Save to database
         CodeVersionTest savedTest = codeVersionTestRepository.save(codeVersionTest);
-        return new CodeVersionTestId(savedTest.getId());
+        return savedTest.getId();
     }
 
     @Override
     public void handle(UpdateCodeVersionTestCommand command) {
         // Find test by ID
-        CodeVersionTest codeVersionTest = codeVersionTestRepository.findById(command.codeVersionTestId().value())
+        CodeVersionTest codeVersionTest = codeVersionTestRepository.findById(command.codeVersionTestId())
                 .orElseThrow(() -> new RuntimeException("Code version test not found: " + command.codeVersionTestId().value()));
         
         // Update test details using business method with Optional handling

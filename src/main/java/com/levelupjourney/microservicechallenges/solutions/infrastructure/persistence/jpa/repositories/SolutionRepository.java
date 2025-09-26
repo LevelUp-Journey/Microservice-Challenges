@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.solutions.infrastructure.persistence.jpa.repositories;
 
 import com.levelupjourney.microservicechallenges.solutions.domain.model.aggregates.Solution;
+import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionId;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface SolutionRepository extends JpaRepository<Solution, UUID> {
+public interface SolutionRepository extends JpaRepository<Solution, SolutionId> {
 
     // Find solution by student and code version (from GetSolutionByStudentIdAndCodeVersionIdQuery)
     Optional<Solution> findByStudentId_ValueAndCodeVersionId_Value(UUID studentId, UUID codeVersionId);

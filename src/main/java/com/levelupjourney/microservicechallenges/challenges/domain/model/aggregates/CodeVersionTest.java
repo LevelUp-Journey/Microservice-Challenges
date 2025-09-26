@@ -2,6 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.aggreg
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddCodeVersionTestCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionTestId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -14,8 +15,8 @@ import java.util.UUID;
 @Entity
 public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionTest> {
     
-    @Id
-    private UUID id;
+    @EmbeddedId
+    private CodeVersionTestId id;
     
     @Embedded
     private CodeVersionId codeVersionId;
@@ -29,7 +30,7 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
     private String failureMessage;
 
     public CodeVersionTest(AddCodeVersionTestCommand command) {
-        this.id = UUID.randomUUID();
+        this.id = new CodeVersionTestId(UUID.randomUUID());
         this.codeVersionId = command.codeVersionId();
         this.input = command.input();
         this.expectedOutput = command.expectedOutput();

@@ -32,13 +32,13 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
         
         // Save to database
         CodeVersion savedCodeVersion = codeVersionRepository.save(codeVersion);
-        return new CodeVersionId(savedCodeVersion.getId());
+        return savedCodeVersion.getId();
     }
 
     @Override
     public void handle(UpdateCodeVersionCommand command) {
         // Find code version by ID
-        CodeVersion codeVersion = codeVersionRepository.findById(command.codeVersionId().value())
+        CodeVersion codeVersion = codeVersionRepository.findById(command.codeVersionId())
                 .orElseThrow(() -> new RuntimeException("Code version not found: " + command.codeVersionId().value()));
         
         // Update code using business method

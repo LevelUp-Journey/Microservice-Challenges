@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.challenges.domain.model.entities;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeTagId;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,9 +15,8 @@ import java.util.UUID;
 @Table(name = "challenge_tags")
 public class ChallengeTag {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @EmbeddedId
+    private ChallengeTagId id;
 
     @Column(nullable = false)
     private String name;
@@ -30,7 +30,7 @@ public class ChallengeTag {
     private Challenge challenge;
 
     public ChallengeTag(String name, String color, String iconUrl) {
-        this.id = UUID.randomUUID();
+        this.id = new ChallengeTagId(UUID.randomUUID());
         this.name = name;
         this.color = color;
         this.iconUrl = iconUrl;

@@ -21,7 +21,7 @@ public class CodeVersionQueryServiceImpl implements CodeVersionQueryService {
 
     @Override
     public Optional<CodeVersion> handle(GetCodeVersionByIdQuery query) {
-        return codeVersionRepository.findById(query.codeVersionId().value());
+        return codeVersionRepository.findById(query.codeVersionId());
     }
 
     @Override

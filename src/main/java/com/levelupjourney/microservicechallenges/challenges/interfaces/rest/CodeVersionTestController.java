@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionTestId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionTestCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionTestQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.AddCodeVersionTestResource;
@@ -43,7 +44,7 @@ public class CodeVersionTestController {
         var testId = codeVersionTestCommandService.handle(command);
         
         // Retrieve created test for response
-        var test = codeVersionTestQueryService.getCodeVersionTestById(testId.value());
+        var test = codeVersionTestQueryService.getCodeVersionTestById(testId);
         
         // Transform domain entity to response resource
         if (test.isPresent()) {
@@ -58,7 +59,7 @@ public class CodeVersionTestController {
     @GetMapping("/{testId}")
     public ResponseEntity<CodeVersionTestResource> getCodeVersionTestById(@PathVariable String testId) {
         // Execute query through domain service
-        var test = codeVersionTestQueryService.getCodeVersionTestById(UUID.fromString(testId));
+        var test = codeVersionTestQueryService.getCodeVersionTestById(new CodeVersionTestId(UUID.fromString(testId)));
         
         // Transform domain entity to response resource if found
         if (test.isPresent()) {
@@ -95,7 +96,7 @@ public class CodeVersionTestController {
         codeVersionTestCommandService.handle(command);
         
         // Retrieve updated test for response
-        var test = codeVersionTestQueryService.getCodeVersionTestById(UUID.fromString(testId));
+        var test = codeVersionTestQueryService.getCodeVersionTestById(new CodeVersionTestId(UUID.fromString(testId)));
         
         // Transform domain entity to response resource
         if (test.isPresent()) {

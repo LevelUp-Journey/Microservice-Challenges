@@ -3,6 +3,7 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.aggreg
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddCodeVersionCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -17,9 +18,8 @@ import java.util.UUID;
 @Entity
 public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
     
-    @Id
-    @Column(name = "code_version_id")
-    private UUID id;
+    @EmbeddedId
+    private CodeVersionId id;
 
     @Embedded
     private ChallengeId challengeId;
@@ -35,7 +35,7 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
     private List<CodeVersionTest> tests = new ArrayList<>();
 
     public CodeVersion(AddCodeVersionCommand command) {
-        this.id = UUID.randomUUID();
+        this.id = new CodeVersionId(UUID.randomUUID());
         this.challengeId = command.challengeId();
         this.language = command.language();
         this.initialCode = ""; // Initial empty code

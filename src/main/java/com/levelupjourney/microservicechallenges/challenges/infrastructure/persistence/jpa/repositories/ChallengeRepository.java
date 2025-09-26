@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ChallengeRepository extends JpaRepository<Challenge, UUID> {
+public interface ChallengeRepository extends JpaRepository<Challenge, ChallengeId> {
 
     // Find challenges by teacher (useful for teacher-specific operations)
     List<Challenge> findByTeacherId_Value(UUID teacherId);

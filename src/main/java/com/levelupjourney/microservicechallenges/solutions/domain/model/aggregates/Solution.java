@@ -14,8 +14,8 @@ import java.util.UUID;
 @Entity
 public class Solution extends AuditableAbstractAggregateRoot<Solution> {
     
-    @Id
-    private UUID id;
+    @EmbeddedId
+    private SolutionId id;
     
     @Embedded
     @AttributeOverride(name = "value", column = @Column(name = "challenge_id"))
@@ -33,7 +33,7 @@ public class Solution extends AuditableAbstractAggregateRoot<Solution> {
     private SolutionDetails details;
 
     public Solution(CreateSolutionCommand command) {
-        this.id = UUID.randomUUID();
+        this.id = new SolutionId(UUID.randomUUID());
         this.challengeId = command.challengeId();
         this.codeVersionId = command.codeVersionId();
         this.studentId = command.studentId();

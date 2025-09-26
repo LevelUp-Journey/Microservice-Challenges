@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersionTest;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionTestId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface CodeVersionTestRepository extends JpaRepository<CodeVersionTest, UUID> {
+public interface CodeVersionTestRepository extends JpaRepository<CodeVersionTest, CodeVersionTestId> {
 
     // Find all tests for a specific code version (for AddCodeVersionTestCommand)
     List<CodeVersionTest> findByCodeVersionId_Value(UUID codeVersionId);

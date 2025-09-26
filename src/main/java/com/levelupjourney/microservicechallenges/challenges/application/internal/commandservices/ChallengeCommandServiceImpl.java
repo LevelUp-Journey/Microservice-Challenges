@@ -26,13 +26,13 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
         
         // Save to database
         Challenge savedChallenge = challengeRepository.save(challenge);
-        return new ChallengeId(savedChallenge.getId());
+        return savedChallenge.getId();
     }
 
     @Override
     public ChallengeId handle(PublishChallengeCommand command) {
         // Find the challenge by ID
-        Challenge challenge = challengeRepository.findById(command.challengeId().value())
+        Challenge challenge = challengeRepository.findById(command.challengeId())
                 .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
 
         // Use business method to publish the challenge
@@ -41,13 +41,13 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
         // Save the updated challenge
         challengeRepository.save(challenge);
         
-        return new ChallengeId(challenge.getId());
+        return challenge.getId();
     }
 
     @Override
     public void handle(StartChallengeCommand command) {
         // Find the challenge by ID
-        Challenge challenge = challengeRepository.findById(command.challengeId().value())
+        Challenge challenge = challengeRepository.findById(command.challengeId())
                 .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
 
         // Validate that the challenge can be started
@@ -60,7 +60,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     @Override
     public void handle(UpdateChallengeCommand command) {
         // Find the challenge by ID
-        Challenge challenge = challengeRepository.findById(command.challengeId().value())
+        Challenge challenge = challengeRepository.findById(command.challengeId())
                 .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
 
         // Use business method to update challenge details with Optional handling

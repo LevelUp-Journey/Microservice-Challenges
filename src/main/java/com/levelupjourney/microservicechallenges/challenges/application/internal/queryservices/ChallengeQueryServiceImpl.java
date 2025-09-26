@@ -25,7 +25,7 @@ public class ChallengeQueryServiceImpl implements ChallengeQueryService {
 
     @Override
     public Optional<Challenge> handle(GetChallengeByIdQuery query) {
-        return challengeRepository.findById(query.challengeId().value());
+        return challengeRepository.findById(query.challengeId());
     }
 
     @Override
