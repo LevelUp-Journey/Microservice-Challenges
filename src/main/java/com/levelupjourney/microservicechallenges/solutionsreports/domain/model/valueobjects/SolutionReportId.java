@@ -1,4 +1,6 @@
 package com.levelupjourney.microservicechallenges.solutionsreports.domain.model.valueobjects;
 
-public record SolutionReportId() {
+import java.util.UUID;
+
+public record SolutionReportId(UUID value) {
 }

@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.util.Date;
 
 @Getter
+@NoArgsConstructor
 @Embeddable
 public class SolutionDetails {
     
