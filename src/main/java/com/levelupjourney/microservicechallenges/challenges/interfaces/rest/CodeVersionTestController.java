@@ -9,6 +9,7 @@ import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.reso
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.AddCodeVersionTestCommandFromResourceAssembler;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.CodeVersionTestResourceFromEntityAssembler;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.UpdateCodeVersionTestCommandFromResourceAssembler;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/api/v1/code-version-tests", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Code Version Tests", description = "Endpoints for managing tests associated with code versions")
 public class CodeVersionTestController {
 
     private final CodeVersionTestCommandService codeVersionTestCommandService;
