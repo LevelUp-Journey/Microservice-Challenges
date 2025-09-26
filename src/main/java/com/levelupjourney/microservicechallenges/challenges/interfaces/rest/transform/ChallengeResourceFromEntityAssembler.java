@@ -17,7 +17,7 @@ public class ChallengeResourceFromEntityAssembler {
             entity.getExperiencePoints(),
             entity.getStatus().name(),
             entity.getTags().stream()
-                .map(ChallengeTag::name)
+                .map(ChallengeTag::getName)
                 .collect(Collectors.toList())
         );
     }

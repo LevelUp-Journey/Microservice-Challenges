@@ -39,7 +39,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersion> versions = new ArrayList<>();
     
-    @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "id", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<ChallengeTag> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {

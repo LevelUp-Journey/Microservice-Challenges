@@ -19,7 +19,7 @@ public class UpdateChallengeCommandFromResourceAssembler {
             resource.experiencePoints(),
             Optional.ofNullable(resource.tags()).map(tags ->
                 tags.stream()
-                    .map(tagName -> new ChallengeTag(null, tagName, null, null))
+                    .map(tagName -> new ChallengeTag(tagName, null, null ))
                     .collect(Collectors.toList())
             )
         );
