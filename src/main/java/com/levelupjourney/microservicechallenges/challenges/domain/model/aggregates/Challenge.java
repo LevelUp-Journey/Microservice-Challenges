@@ -39,7 +39,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersion> versions = new ArrayList<>();
     
-    @OneToMany(mappedBy = "id", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "challenge", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChallengeTag> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {
@@ -74,7 +74,25 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
-            this.tags = new ArrayList<>(tags);
+            // Clear existing tags
+            this.tags.clear();
+            // Add new tags ensuring proper relationship
+            tags.forEach(this::addTag);
+        }
+    }
+
+    // Helper method to maintain bidirectional relationship consistency
+    public void addTag(ChallengeTag tag) {
+        if (tag != null) {
+            this.tags.add(tag);
+            tag.setChallenge(this);
+        }
+    }
+
+    // Helper method to remove a tag while maintaining consistency
+    public void removeTag(ChallengeTag tag) {
+        if (tag != null) {
+            this.tags.remove(tag);
         }
     }
 }
