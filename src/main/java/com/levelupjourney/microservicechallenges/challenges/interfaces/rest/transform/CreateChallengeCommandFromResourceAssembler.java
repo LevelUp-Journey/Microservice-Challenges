@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public class CreateChallengeCommandFromResourceAssembler {
 
-    static CreateChallengeCommand toCommandFromResource(CreateChallengeResource resource) {
+    public static CreateChallengeCommand toCommandFromResource(CreateChallengeResource resource) {
         return new CreateChallengeCommand(
             new TeacherId(UUID.fromString(resource.teacherId())),
             resource.name(),
