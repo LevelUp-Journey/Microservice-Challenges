@@ -1,4 +1,4 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource;
 
-public record StartChallengeResource() {
+public record StartChallengeResource(String challengeId) {
 }

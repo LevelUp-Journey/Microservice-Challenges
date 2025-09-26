@@ -1,4 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource;
 
-public record CreateChallengeResource() {
+public record CreateChallengeResource(String teacherId, String name, String description, Integer experiencePoints) {
+
+
 }
