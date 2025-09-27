@@ -10,7 +10,7 @@ public class ChallengeResourceFromEntityAssembler {
 
     public static ChallengeResource toResourceFromEntity(Challenge entity) {
         return new ChallengeResource(
-            entity.getId().toString(),
+            entity.getId().value().toString(),
             entity.getTeacherId().value().toString(),
             entity.getName(),
             entity.getDescription(),

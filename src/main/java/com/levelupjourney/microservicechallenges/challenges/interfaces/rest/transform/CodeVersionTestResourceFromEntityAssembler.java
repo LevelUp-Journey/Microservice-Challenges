@@ -7,7 +7,7 @@ public class CodeVersionTestResourceFromEntityAssembler {
 
     public static CodeVersionTestResource toResourceFromEntity(CodeVersionTest entity) {
         return new CodeVersionTestResource(
-            entity.getId().toString(),
+            entity.getId().value().toString(),
             entity.getCodeVersionId().value().toString(),
             entity.getInput(),
             entity.getExpectedOutput(),

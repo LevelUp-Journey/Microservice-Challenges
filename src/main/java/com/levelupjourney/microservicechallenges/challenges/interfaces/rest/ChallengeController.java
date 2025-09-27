@@ -156,8 +156,7 @@ public class ChallengeController {
     public ResponseEntity<Void> startChallenge(@PathVariable String challengeId,
                                                @RequestBody StartChallengeResource resource) {
         // Transform resource to domain command
-        var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(
-                new StartChallengeResource(challengeId, resource.studentId()));
+        var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
 
         // Execute command through domain service
         challengeCommandService.handle(command);

@@ -7,7 +7,7 @@ public class CodeVersionResourceFromEntityAssembler {
 
     public static CodeVersionResource toResourceFromEntity(CodeVersion entity) {
         return new CodeVersionResource(
-            entity.getId().toString(),
+            entity.getId().value().toString(),
             entity.getChallengeId().value().toString(),
             entity.getLanguage().name(),
             entity.getInitialCode()

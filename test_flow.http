@@ -1,0 +1,114 @@
+# Archivo de Pruebas para el Flujo Completo de Challenges
+# Este archivo contiene las URLs y JSON bodies para probar la creación completa de un challenge,
+# incluyendo agregar code version, tests, iniciar challenge y submit solution.
+# Usa placeholders como CHALLENGE_ID_ANTERIOR para IDs generados en pasos previos.
+
+# =============================================================================
+# FASE 1: CREACIÓN DEL CHALLENGE
+# =============================================================================
+
+# Crear un nuevo challenge
+POST http://localhost:8082/api/v1/challenges
+Content-Type: application/json
+
+{
+  "teacherId": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Challenge de Suma Básica",
+  "description": "Implementa una función que sume dos números enteros",
+  "experiencePoints": 100
+}
+
+# Respuesta esperada: Challenge creado con ID (usar este ID en pasos siguientes como CHALLENGE_ID_ANTERIOR)
+
+# =============================================================================
+# FASE 2: AGREGAR CODE VERSION AL CHALLENGE
+# =============================================================================
+
+# Agregar una code version al challenge creado
+POST http://localhost:8082/api/v1/code-versions
+Content-Type: application/json
+
+{
+  "challengeId": "CHALLENGE_ID_ANTERIOR",
+  "language": "JAVA"
+}
+
+# Respuesta esperada: Code version creado con ID (usar este ID en pasos siguientes como CODE_VERSION_ID_ANTERIOR)
+
+# =============================================================================
+# FASE 3: AGREGAR TESTS A LA CODE VERSION
+# =============================================================================
+
+# Agregar primer test
+POST http://localhost:8082/api/v1/code-version-tests
+Content-Type: application/json
+
+{
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR",
+  "input": "2\n3",
+  "expectedOutput": "5",
+  "customValidationCode": "public static boolean validate(String input, String output) { return output.trim().equals(\"5\"); }",
+  "failureMessage": "La suma de 2 + 3 debe ser 5"
+}
+
+# Agregar segundo test
+POST http://localhost:8082/api/v1/code-version-tests
+Content-Type: application/json
+
+{
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR",
+  "input": "10\n20",
+  "expectedOutput": "30",
+  "customValidationCode": "public static boolean validate(String input, String output) { return output.trim().equals(\"30\"); }",
+  "failureMessage": "La suma de 10 + 20 debe ser 30"
+}
+
+# =============================================================================
+# FASE 4: INICIAR EL CHALLENGE (PARA UN ESTUDIANTE)
+# =============================================================================
+
+# Iniciar el challenge para un estudiante
+POST http://localhost:8082/api/v1/challenges/CHALLENGE_ID_ANTERIOR/start
+Content-Type: application/json
+
+{
+  "challengeId": "CHALLENGE_ID_ANTERIOR",
+  "studentId": "660e8400-e29b-41d4-a716-446655440001",
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR"
+}
+
+# =============================================================================
+# FASE 5: CREAR UNA SOLUCIÓN
+# =============================================================================
+
+# Nota: La solución por defecto se crea automáticamente cuando se inicia el challenge
+# a través del evento ChallengeStartedEvent y la política ChallengeStartedPolicy.
+# Si necesitas crear una solución adicional manualmente, usa este endpoint:
+
+# =============================================================================
+# FASE 6: SUBMIT DE LA SOLUCIÓN PARA EVALUACIÓN
+# =============================================================================
+
+# Primero, obtener el ID de la solution creada automáticamente
+# GET http://localhost:8082/api/v1/solutions?studentId=660e8400-e29b-41d4-a716-446655440001&challengeId=CHALLENGE_ID_ANTERIOR&codeVersionId=CODE_VERSION_ID_ANTERIOR
+
+# Enviar la solución para evaluación (esto activará el gRPC al CodeRunner)
+# Reemplaza SOLUTION_ID_ANTERIOR con el ID obtenido del GET anterior
+POST http://localhost:8082/api/v1/solutions/SOLUTION_ID_ANTERIOR/submit
+Content-Type: application/json
+
+{
+  "code": "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        int a = scanner.nextInt();\n        int b = scanner.nextInt();\n        System.out.println(a + b);\n    }\n}",
+  "studentId": "660e8400-e29b-41d4-a716-446655440001"
+}
+
+# =============================================================================
+# NOTAS IMPORTANTES
+# =============================================================================
+# 1. Reemplaza CHALLENGE_ID_ANTERIOR con el ID real del challenge creado
+# 2. Reemplaza CODE_VERSION_ID_ANTERIOR con el ID real de la code version
+# 3. Reemplaza SOLUTION_ID_ANTERIOR con el ID real de la solution (obtenido del GET)
+# 4. Asegúrate de que el microservicio CodeRunner esté corriendo en localhost:8084
+# 5. Los UUIDs de ejemplo pueden ser reemplazados por valores reales
+# 6. El código de ejemplo es para Java, pero puede adaptarse a otros lenguajes
+# 7. Ahora se crea automáticamente una solution por defecto al iniciar el challenge
