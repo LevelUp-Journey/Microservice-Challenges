@@ -6,6 +6,10 @@ import java.util.Optional;
 
 public interface ChallengesContextFacade {
 
-    Optional<CodeVersionToBeSubmittedResource> getChallengeDetailsToBeSubmitted(String codeVersionId);
+    /**
+     * Gets code version details required for solution submission.
+     * Returns language and all tests associated with the code version.
+     */
+    Optional<CodeVersionToBeSubmittedResource> getCodeVersionForSubmission(String codeVersionId);
 
 }

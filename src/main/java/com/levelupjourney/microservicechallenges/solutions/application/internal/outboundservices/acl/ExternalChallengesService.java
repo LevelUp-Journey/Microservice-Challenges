@@ -12,20 +12,15 @@ public class ExternalChallengesService {
         this.challengesContextFacade = challengesContextFacade;
     }
 
-    public CodeVersionToBeSubmittedResource getChallengeDetailsToBeSubmitted(String challengeId) {
-        var details = challengesContextFacade.getChallengeDetailsToBeSubmitted(challengeId);
+    /**
+     * Get code version details required for solution submission.
+     * Includes code language and all associated tests.
+     */
+    public CodeVersionToBeSubmittedResource getCodeVersionDetailsForSubmission(String codeVersionId) {
+        var details = challengesContextFacade.getCodeVersionForSubmission(codeVersionId);
         if (details.isEmpty()) {
-            throw new IllegalArgumentException("Challenge details not found for ID: " + challengeId);
+            throw new IllegalArgumentException("CodeVersion not found for submission: " + codeVersionId);
         }
-        return details.get();
-    }
-
-    public CodeVersionToBeSubmittedResource fetchCodeVersionDetailsForSubmittingByCodeVersionId(String codeVersionId) {
-        var details = challengesContextFacade.getChallengeDetailsToBeSubmitted(codeVersionId);
-        if (details.isEmpty()) {
-            throw new IllegalArgumentException("Code version details not found for ID: " + codeVersionId);
-        }
-
         return details.get();
     }
 }

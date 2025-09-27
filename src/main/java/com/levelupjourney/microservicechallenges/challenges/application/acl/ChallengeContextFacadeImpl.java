@@ -20,7 +20,7 @@ public class ChallengeContextFacadeImpl implements ChallengesContextFacade {
     }
 
     @Override
-    public Optional<CodeVersionToBeSubmittedResource> getChallengeDetailsToBeSubmitted(String codeVersionId) {
+    public Optional<CodeVersionToBeSubmittedResource> getCodeVersionForSubmission(String codeVersionId) {
 
         var getCodeVersionByIdQuery = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
         var codeVersion = codeVersionQueryService.handle(getCodeVersionByIdQuery);

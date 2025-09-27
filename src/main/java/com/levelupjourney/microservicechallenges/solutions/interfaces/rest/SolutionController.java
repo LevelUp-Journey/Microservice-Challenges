@@ -26,7 +26,7 @@ public class SolutionController {
     private final SolutionQueryService solutionQueryService;
 
     public SolutionController(SolutionCommandService solutionCommandService,
-                             SolutionQueryService solutionQueryService) {
+                              SolutionQueryService solutionQueryService) {
         this.solutionCommandService = solutionCommandService;
         this.solutionQueryService = solutionQueryService;
     }
@@ -72,11 +72,11 @@ public class SolutionController {
     public ResponseEntity<SolutionResource> getSolutionByStudentAndCodeVersion(
             @PathVariable String studentId,
             @PathVariable String codeVersionId) {
-        
+
         // Transform path variables to domain query
         var query = new GetSolutionByStudentIdAndCodeVersionIdQuery(
-            new StudentId(UUID.fromString(studentId)),
-            new CodeVersionId(UUID.fromString(codeVersionId))
+                new StudentId(UUID.fromString(studentId)),
+                new CodeVersionId(UUID.fromString(codeVersionId))
         );
 
         // Execute query through domain service
@@ -94,7 +94,7 @@ public class SolutionController {
     // Update a solution
     @PutMapping("/{solutionId}")
     public ResponseEntity<SolutionResource> updateSolution(@PathVariable String solutionId,
-                                                          @RequestBody UpdateSolutionResource resource) {
+                                                           @RequestBody UpdateSolutionResource resource) {
         // Transform resource to domain command
         var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
 
@@ -117,7 +117,7 @@ public class SolutionController {
     // Submit a solution for evaluation
     @PostMapping("/{solutionId}/submit")
     public ResponseEntity<SubmissionResultResource> submitSolution(@PathVariable String solutionId,
-                                              @RequestBody SubmitSolutionResource resource) {
+                                                                   @RequestBody SubmitSolutionResource resource) {
         // Transform resource to domain command
         var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
 
@@ -127,12 +127,12 @@ public class SolutionController {
         // Return success response with submission result
         if (solutionReportId.isPresent()) {
             var result = new SubmissionResultResource(
-                solutionReportId.get().value().toString(),
-                "Solution submitted successfully for evaluation"
+                    solutionReportId.get().value().toString(),
+                    "Solution submitted successfully for evaluation"
             );
             return ResponseEntity.ok(result);
         }
-        
+
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

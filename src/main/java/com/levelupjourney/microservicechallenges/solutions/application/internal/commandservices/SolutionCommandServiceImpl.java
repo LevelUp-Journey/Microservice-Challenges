@@ -11,8 +11,10 @@ import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobj
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionCommandService;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionQueryService;
 import com.levelupjourney.microservicechallenges.solutions.infrastructure.persistence.jpa.repositories.SolutionRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,7 +44,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
 
     @Override
     public Optional<SolutionReportId> handle(SubmitSolutionCommand command) {
-        // 1. Verify solution exists
+        // 1. Verify solution exists and get its CodeVersion
         var solution = solutionQueryService.handle(
                 new GetSolutionByIdQuery(command.solutionId())
         );
@@ -51,28 +53,27 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             throw new IllegalArgumentException("Solution not found: " + command.solutionId().value());
         }
 
-        // 2. Get challenge details through ACL
-        var challengeDetails = externalChallengesService.getChallengeDetailsToBeSubmitted(
-            command.challengeId().value().toString()
+        var existingSolution = solution.get();
+
+        // 2. Get code version details (language + tests) through ACL
+        var codeVersionDetails = externalChallengesService.getCodeVersionDetailsForSubmission(
+            existingSolution.getCodeVersionId().value().toString()
         );
 
-        if (challengeDetails == null) {
-            throw new IllegalArgumentException("Challenge not found: " + command.challengeId().value());
-        }
-
-        // 3. Submit solution for execution through gRPC to CodeRunner microservice
-        var executionResult = codeExecutionGrpcService.executeCode(
+        // 3. Submit solution for execution using CodeRunner with all required data
+        var executionResult = codeExecutionGrpcService.executeCodeWithTests(
             command.solutionId().value().toString(),
-            command.challengeId().value().toString(),
+            existingSolution.getCodeVersionId().value().toString(),
             command.studentId().value().toString(),
             command.code(),
-            command.language()
+            codeVersionDetails.codeLanguage(), // Use language from CodeVersion
+            codeVersionDetails.tests() // Pass all tests to CodeRunner
         );
 
         if (executionResult.isSuccess()) {
             // Create solution report with approved test IDs
-            // TODO: Store the approved test IDs in the solution report
             var approvedTestIds = executionResult.getApprovedTestIds();
+            // TODO: Create actual SolutionReport entity with approved test IDs
             return Optional.of(new SolutionReportId(UUID.randomUUID()));
         }
 
@@ -80,6 +81,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
     }
 
     @Override
+    @Transactional
     public void handle(UpdateSolutionCommand command) {
         var solution = solutionQueryService.handle(
                 new GetSolutionByIdQuery(command.solutionId())

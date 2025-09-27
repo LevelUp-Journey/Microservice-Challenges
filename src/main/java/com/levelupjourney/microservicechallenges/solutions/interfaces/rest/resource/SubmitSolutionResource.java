@@ -8,9 +8,6 @@ public record SubmitSolutionResource(
         String code,
         
         @NotNull(message = "Student ID is required")
-        String studentId,
-        
-        String language,
-        String comments
+        String studentId
 ) {
 }

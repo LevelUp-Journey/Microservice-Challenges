@@ -14,14 +14,14 @@ public class CodeVersionToBeSubmittedResourceFromEntityAssembler {
                 .toList();
 
         return new CodeVersionToBeSubmittedResource(
-                codeVersion.getId().value().toString(),
+                codeVersion.getLanguage().name().toLowerCase(), // Use language instead of ID
                 tests
         );
     }
 
     public static CodeVersionTestForSubmittingResource toCodeVersionTestForSubmittingResourceFromEntity(CodeVersionTest codeVersionTest) {
         return new CodeVersionTestForSubmittingResource(
-                codeVersionTest.getCodeVersionId().value().toString(),
+                codeVersionTest.getId().value().toString(), // Use test ID, not CodeVersion ID
                 codeVersionTest.getInput(),
                 codeVersionTest.getExpectedOutput(),
                 codeVersionTest.getCustomValidationCode()
