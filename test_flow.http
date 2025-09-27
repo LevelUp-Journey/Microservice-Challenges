@@ -13,8 +13,8 @@ Content-Type: application/json
 
 {
   "teacherId": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Challenge de Suma Básica",
-  "description": "Implementa una función que sume dos números enteros",
+  "name": "Challenge de Suma Básica en C++",
+  "description": "Implementa una función que sume dos números enteros en C++",
   "experiencePoints": 100
 }
 
@@ -30,7 +30,7 @@ Content-Type: application/json
 
 {
   "challengeId": "CHALLENGE_ID_ANTERIOR",
-  "language": "JAVA"
+  "language": "C_PLUS_PLUS"
 }
 
 # Respuesta esperada: Code version creado con ID (usar este ID en pasos siguientes como CODE_VERSION_ID_ANTERIOR)
@@ -64,7 +64,16 @@ Content-Type: application/json
 }
 
 # =============================================================================
-# FASE 4: INICIAR EL CHALLENGE (PARA UN ESTUDIANTE)
+# FASE 4: PUBLICAR EL CHALLENGE
+# =============================================================================
+
+# Publicar el challenge para que esté disponible para estudiantes
+PATCH http://localhost:8082/api/v1/challenges/CHALLENGE_ID_ANTERIOR/publish
+
+# Respuesta esperada: Challenge publicado con status "PUBLISHED"
+
+# =============================================================================
+# FASE 5: INICIAR EL CHALLENGE (PARA UN ESTUDIANTE)
 # =============================================================================
 
 # Iniciar el challenge para un estudiante
@@ -78,27 +87,48 @@ Content-Type: application/json
 }
 
 # =============================================================================
-# FASE 5: CREAR UNA SOLUCIÓN
+# FASE 6: CREAR UNA SOLUCIÓN
 # =============================================================================
 
 # Nota: La solución por defecto se crea automáticamente cuando se inicia el challenge
 # a través del evento ChallengeStartedEvent y la política ChallengeStartedPolicy.
+# Esta solución contiene el código inicial/base de la code version (plantilla).
 # Si necesitas crear una solución adicional manualmente, usa este endpoint:
 
 # =============================================================================
-# FASE 6: SUBMIT DE LA SOLUCIÓN PARA EVALUACIÓN
+# FASE 7: ACTUALIZAR LA SOLUCIÓN CON EL CÓDIGO DEL ESTUDIANTE
 # =============================================================================
 
+# Actualizar la solución por defecto con el código real del estudiante
 # Primero, obtener el ID de la solution creada automáticamente
 # GET http://localhost:8082/api/v1/solutions?studentId=660e8400-e29b-41d4-a716-446655440001&challengeId=CHALLENGE_ID_ANTERIOR&codeVersionId=CODE_VERSION_ID_ANTERIOR
 
-# Enviar la solución para evaluación (esto activará el gRPC al CodeRunner)
+# Actualizar la solución con el código del estudiante
 # Reemplaza SOLUTION_ID_ANTERIOR con el ID obtenido del GET anterior
+PUT http://localhost:8082/api/v1/solutions/SOLUTION_ID_ANTERIOR
+Content-Type: application/json
+
+{
+  "code": "#include <iostream>\n\nint main() {\n    int a, b;\n    std::cin >> a >> b;\n    std::cout << (a + b) << std::endl;\n    return 0;\n}",
+  "language": "C_PLUS_PLUS"
+}
+
+# Respuesta esperada: Solution actualizada con el código del estudiante
+
+# =============================================================================
+# FASE 8: SUBMIT DE LA SOLUCIÓN PARA EVALUACIÓN
+# =============================================================================
+
+# Primero, obtener el ID de la solution creada automáticamente (para referencia)
+# GET http://localhost:8082/api/v1/solutions?studentId=660e8400-e29b-41d4-a716-446655440001&challengeId=CHALLENGE_ID_ANTERIOR&codeVersionId=CODE_VERSION_ID_ANTERIOR
+
+# Enviar la solución actualizada para evaluación (esto activará el gRPC al CodeRunner)
+# Usa el mismo SOLUTION_ID_ANTERIOR que usaste para actualizar la solución en la Fase 7
 POST http://localhost:8082/api/v1/solutions/SOLUTION_ID_ANTERIOR/submit
 Content-Type: application/json
 
 {
-  "code": "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        int a = scanner.nextInt();\n        int b = scanner.nextInt();\n        System.out.println(a + b);\n    }\n}",
+  "code": "#include <iostream>\n\nint main() {\n    int a, b;\n    std::cin >> a >> b;\n    std::cout << (a + b) << std::endl;\n    return 0;\n}",
   "studentId": "660e8400-e29b-41d4-a716-446655440001"
 }
 
@@ -110,5 +140,6 @@ Content-Type: application/json
 # 3. Reemplaza SOLUTION_ID_ANTERIOR con el ID real de la solution (obtenido del GET)
 # 4. Asegúrate de que el microservicio CodeRunner esté corriendo en localhost:8084
 # 5. Los UUIDs de ejemplo pueden ser reemplazados por valores reales
-# 6. El código de ejemplo es para Java, pero puede adaptarse a otros lenguajes
-# 7. Ahora se crea automáticamente una solution por defecto al iniciar el challenge
+# 6. El código de ejemplo es para C++, pero puede adaptarse a otros lenguajes
+# 7. La solución por defecto creada al iniciar el challenge contiene código base/plantilla
+# 8. DEBES actualizar la solución con el código real del estudiante ANTES del submit
