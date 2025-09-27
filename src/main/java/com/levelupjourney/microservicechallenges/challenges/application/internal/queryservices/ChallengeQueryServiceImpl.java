@@ -35,7 +35,7 @@ public class ChallengeQueryServiceImpl implements ChallengeQueryService {
 
     @Override
     public List<Challenge> handle(GetChallengesByTeacherIdQuery query) {
-        return challengeRepository.findByTeacherId_Value(query.teacherId().value());
+        return challengeRepository.findByTeacherId(query.teacherId().value());
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,8 +14,9 @@ import java.util.UUID;
 @Repository
 public interface ChallengeRepository extends JpaRepository<Challenge, ChallengeId> {
 
-    // Find challenges by teacher (useful for teacher-specific operations)
-    List<Challenge> findByTeacherId_Value(UUID teacherId);
+    // Find challenges by teacher ID using clean method name
+    @Query("SELECT c FROM Challenge c WHERE c.teacherId.value = :teacherId")
+    List<Challenge> findByTeacherId(@Param("teacherId") UUID teacherId);
 
     // Find challenges by status
     List<Challenge> findByStatus(ChallengeStatus status);

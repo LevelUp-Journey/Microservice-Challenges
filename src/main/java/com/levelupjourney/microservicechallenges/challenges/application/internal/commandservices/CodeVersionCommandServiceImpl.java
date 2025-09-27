@@ -21,7 +21,7 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
     public CodeVersionId handle(AddCodeVersionCommand command) {
         // Check if a version already exists for this challenge and language
         var existingVersion = codeVersionRepository
-                .findByChallengeId_ValueAndLanguage(command.challengeId().value(), command.language());
+                .findByChallengeIdAndLanguage(command.challengeId().value(), command.language());
         
         if (existingVersion.isPresent()) {
             throw new RuntimeException("Code version already exists for challenge and language");

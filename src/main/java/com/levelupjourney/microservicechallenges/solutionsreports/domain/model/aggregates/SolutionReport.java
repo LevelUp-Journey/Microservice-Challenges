@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.solutionsreports.domain.model.aggregates;
 
 import com.levelupjourney.microservicechallenges.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+import com.levelupjourney.microservicechallenges.solutionsreports.domain.model.commands.CreateSolutionReportCommand;
 import com.levelupjourney.microservicechallenges.solutionsreports.domain.model.valueobjects.CodeVersionTestId;
 import com.levelupjourney.microservicechallenges.solutionsreports.domain.model.valueobjects.SolutionId;
 import com.levelupjourney.microservicechallenges.solutionsreports.domain.model.valueobjects.SolutionReportId;
@@ -10,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @NoArgsConstructor
@@ -35,4 +37,13 @@ public class SolutionReport extends AuditableAbstractAggregateRoot<SolutionRepor
     private Double timeTaken;
     
     private Double memoryUsed;
+
+    public SolutionReport(CreateSolutionReportCommand command) {
+        this.id = new SolutionReportId(UUID.randomUUID());
+        this.solutionId = command.solutionId();
+        this.studentId = command.studentId();
+        this.successfulTests = command.successfulTests();
+        this.timeTaken = command.timeTaken();
+        this.memoryUsed = command.memoryUsed();
+    }
 }

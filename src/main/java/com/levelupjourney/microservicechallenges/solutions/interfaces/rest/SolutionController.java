@@ -68,7 +68,7 @@ public class SolutionController {
     }
 
     // Get solution by student ID and code version ID
-    @GetMapping("/student/{studentId}/code-version/{codeVersionId}")
+    @GetMapping("/students/{studentId}/code-versions/{codeVersionId}")
     public ResponseEntity<SolutionResource> getSolutionByStudentAndCodeVersion(
             @PathVariable String studentId,
             @PathVariable String codeVersionId) {
@@ -115,7 +115,7 @@ public class SolutionController {
     }
 
     // Submit a solution for evaluation
-    @PostMapping("/{solutionId}/submit")
+    @PostMapping("/{solutionId}/submits")
     public ResponseEntity<Void> submitSolution(@PathVariable String solutionId,
                                               @RequestBody SubmitSolutionResource resource) {
         // Transform resource to domain command

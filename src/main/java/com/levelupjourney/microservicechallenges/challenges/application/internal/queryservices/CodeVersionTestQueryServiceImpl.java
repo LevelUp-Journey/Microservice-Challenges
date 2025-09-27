@@ -31,6 +31,6 @@ public class CodeVersionTestQueryServiceImpl implements CodeVersionTestQueryServ
 
     @Override
     public long countTestsByCodeVersionId(CodeVersionId codeVersionId) {
-        return codeVersionTestRepository.countByCodeVersionId_Value(codeVersionId.value());
+        return codeVersionTestRepository.countByCodeVersionId(codeVersionId.value());
     }
 }
