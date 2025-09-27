@@ -66,13 +66,14 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             command.challengeId().value().toString(),
             command.studentId().value().toString(),
             command.code(),
-            command.language(),
-            command.comments()
+            command.language()
         );
 
         if (executionResult.isSuccess()) {
-            // Create solution report with execution ID
-            return Optional.of(new SolutionReportId(UUID.fromString(executionResult.getExecutionId())));
+            // Create solution report with approved test IDs
+            // TODO: Store the approved test IDs in the solution report
+            var approvedTestIds = executionResult.getApprovedTestIds();
+            return Optional.of(new SolutionReportId(UUID.randomUUID()));
         }
 
         return Optional.empty();

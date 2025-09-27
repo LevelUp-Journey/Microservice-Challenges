@@ -8,11 +8,8 @@ option java_outer_classname = "CodeExecutionProto";
 
 // Service for code execution - communicates with CodeRunner microservice (Go)
 service CodeExecutionService {
-    // Execute solution code
+    // Execute solution code and return approved test IDs
     rpc ExecuteCode (ExecutionRequest) returns (ExecutionResponse);
-    
-    // Get execution result by execution ID
-    rpc GetExecutionResult (ExecutionResultRequest) returns (ExecutionResultResponse);
 }
 
 // Request for code execution
@@ -22,48 +19,11 @@ message ExecutionRequest {
     string student_id = 3;
     string code = 4;
     string language = 5;
-    repeated TestCase test_cases = 6;
-    int32 timeout_seconds = 7;
 }
 
-// Response for code execution
+// Response with list of approved test IDs
 message ExecutionResponse {
-    string execution_id = 1;
-    string status = 2; // PENDING, RUNNING, COMPLETED, FAILED
+    repeated string approved_test_ids = 1;
+    bool success = 2;
     string message = 3;
-}
-
-// Request for getting execution result
-message ExecutionResultRequest {
-    string execution_id = 1;
-}
-
-// Response with execution result
-message ExecutionResultResponse {
-    string execution_id = 1;
-    string status = 2; // COMPLETED, FAILED, TIMEOUT
-    bool success = 3;
-    int32 score = 4;
-    repeated TestResult test_results = 5;
-    int64 execution_time_ms = 6;
-    string error_message = 7;
-}
-
-// Test case for execution
-message TestCase {
-    string test_id = 1;
-    string input = 2;
-    string expected_output = 3;
-    string description = 4;
-    bool is_visible = 5;
-}
-
-// Test result
-message TestResult {
-    string test_id = 1;
-    bool passed = 2;
-    string actual_output = 3;
-    string expected_output = 4;
-    int64 execution_time_ms = 5;
-    string error_message = 6;
 }
