@@ -8,6 +8,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.command
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,6 +21,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     }
 
     @Override
+    @Transactional
     public ChallengeId handle(CreateChallengeCommand command) {
         // Create new challenge with DRAFT status using constructor
         Challenge challenge = new Challenge(command);
@@ -30,6 +32,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     }
 
     @Override
+    @Transactional
     public ChallengeId handle(PublishChallengeCommand command) {
         // Find the challenge by ID
         Challenge challenge = challengeRepository.findById(command.challengeId())
@@ -45,6 +48,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     }
 
     @Override
+    @Transactional
     public void handle(StartChallengeCommand command) {
         // Find the challenge by ID
         Challenge challenge = challengeRepository.findById(command.challengeId())
@@ -58,6 +62,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     }
 
     @Override
+    @Transactional
     public void handle(UpdateChallengeCommand command) {
         // Find the challenge by ID
         Challenge challenge = challengeRepository.findById(command.challengeId())

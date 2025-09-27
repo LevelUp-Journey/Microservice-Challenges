@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.command
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionTestId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionTestCommandService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.CodeVersionTestRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,6 +19,7 @@ public class CodeVersionTestCommandServiceImpl implements CodeVersionTestCommand
     }
 
     @Override
+    @Transactional
     public CodeVersionTestId handle(AddCodeVersionTestCommand command) {
         // Create new test for code version using constructor
         CodeVersionTest codeVersionTest = new CodeVersionTest(command);
@@ -28,6 +30,7 @@ public class CodeVersionTestCommandServiceImpl implements CodeVersionTestCommand
     }
 
     @Override
+    @Transactional
     public void handle(UpdateCodeVersionTestCommand command) {
         // Find test by ID
         CodeVersionTest codeVersionTest = codeVersionTestRepository.findById(command.codeVersionTestId())

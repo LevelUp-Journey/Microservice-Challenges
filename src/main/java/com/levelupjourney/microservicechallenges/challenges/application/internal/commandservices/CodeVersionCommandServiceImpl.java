@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.command
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionCommandService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.CodeVersionRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,6 +19,7 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
     }
 
     @Override
+    @Transactional
     public CodeVersionId handle(AddCodeVersionCommand command) {
         // Check if a version already exists for this challenge and language
         var existingVersion = codeVersionRepository
@@ -36,6 +38,7 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
     }
 
     @Override
+    @Transactional
     public void handle(UpdateCodeVersionCommand command) {
         // Find code version by ID
         CodeVersion codeVersion = codeVersionRepository.findById(command.codeVersionId())
