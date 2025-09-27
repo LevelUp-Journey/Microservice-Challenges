@@ -115,8 +115,8 @@ public class SolutionController {
     }
 
     // Submit a solution for evaluation
-    @PostMapping("/{solutionId}/submits")
-    public ResponseEntity<Void> submitSolution(@PathVariable String solutionId,
+    @PostMapping("/{solutionId}/submit")
+    public ResponseEntity<SubmissionResultResource> submitSolution(@PathVariable String solutionId,
                                               @RequestBody SubmitSolutionResource resource) {
         // Transform resource to domain command
         var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
@@ -124,9 +124,15 @@ public class SolutionController {
         // Execute command through domain service
         var solutionReportId = solutionCommandService.handle(command);
 
-        // Return success response with the report ID in headers for reference
-        return ResponseEntity.ok()
-                .header("Solution-Report-Id", solutionReportId.value().toString())
-                .build();
+        // Return success response with submission result
+        if (solutionReportId.isPresent()) {
+            var result = new SubmissionResultResource(
+                solutionReportId.get().value().toString(),
+                "Solution submitted successfully for evaluation"
+            );
+            return ResponseEntity.ok(result);
+        }
+        
+        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

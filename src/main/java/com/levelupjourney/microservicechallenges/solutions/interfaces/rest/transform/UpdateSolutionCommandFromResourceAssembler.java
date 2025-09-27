@@ -11,7 +11,8 @@ public class UpdateSolutionCommandFromResourceAssembler {
     public static UpdateSolutionCommand toCommandFromResource(String solutionId, UpdateSolutionResource resource) {
         return new UpdateSolutionCommand(
             new SolutionId(UUID.fromString(solutionId)),
-            resource.code()
+            resource.code(),
+            resource.language() != null ? resource.language() : "java" // default language
         );
     }
 }

@@ -39,4 +39,9 @@ public class Solution extends AuditableAbstractAggregateRoot<Solution> {
         this.studentId = command.studentId();
         this.details = new SolutionDetails(command.code());
     }
+    
+    public void updateSolution(String code, String language) {
+        // Update solution details with new code and language
+        this.details = new SolutionDetails(code);
+    }
 }

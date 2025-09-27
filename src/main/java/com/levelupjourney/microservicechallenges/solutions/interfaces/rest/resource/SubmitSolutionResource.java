@@ -1,4 +1,16 @@
 package com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resource;
 
-public record SubmitSolutionResource(String code) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record SubmitSolutionResource(
+        @NotBlank(message = "Solution code cannot be empty")
+        String code,
+        
+        @NotNull(message = "Student ID is required")
+        String studentId,
+        
+        String language,
+        String comments
+) {
 }

@@ -10,6 +10,6 @@ import java.util.Optional;
 
 public interface SolutionCommandService {
     Optional<Solution> handle(CreateSolutionCommand command);
-    SolutionReportId handle(SubmitSolutionCommand command);
+    Optional<SolutionReportId> handle(SubmitSolutionCommand command);
     void handle(UpdateSolutionCommand command);
 }

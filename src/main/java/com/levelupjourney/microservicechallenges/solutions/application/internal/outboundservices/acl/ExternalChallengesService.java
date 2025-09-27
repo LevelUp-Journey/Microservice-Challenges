@@ -1,6 +1,5 @@
 package com.levelupjourney.microservicechallenges.solutions.application.internal.outboundservices.acl;
 
-
 import com.levelupjourney.microservicechallenges.challenges.interfaces.acl.ChallengesContextFacade;
 import com.levelupjourney.microservicechallenges.shared.interfaces.rest.resources.CodeVersionToBeSubmittedResource;
 import org.springframework.stereotype.Service;
@@ -13,6 +12,13 @@ public class ExternalChallengesService {
         this.challengesContextFacade = challengesContextFacade;
     }
 
+    public CodeVersionToBeSubmittedResource getChallengeDetailsToBeSubmitted(String challengeId) {
+        var details = challengesContextFacade.getChallengeDetailsToBeSubmitted(challengeId);
+        if (details.isEmpty()) {
+            throw new IllegalArgumentException("Challenge details not found for ID: " + challengeId);
+        }
+        return details.get();
+    }
 
     public CodeVersionToBeSubmittedResource fetchCodeVersionDetailsForSubmittingByCodeVersionId(String codeVersionId) {
         var details = challengesContextFacade.getChallengeDetailsToBeSubmitted(codeVersionId);
@@ -22,5 +28,4 @@ public class ExternalChallengesService {
 
         return details.get();
     }
-
 }
