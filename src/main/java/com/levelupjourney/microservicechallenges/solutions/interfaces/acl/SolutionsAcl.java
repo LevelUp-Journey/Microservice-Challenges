@@ -23,13 +23,13 @@ public class SolutionsAcl {
     /**
      * Creates a default solution for a student starting a challenge.
      * This is called when a ChallengeStartedEvent is published.
-     * Converts value objects from challenges bounded context to solutions bounded context.
+     * Converts id objects from challenges bounded context to solutions bounded context.
      */
     public void createDefaultSolution(com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.StudentId studentId,
                                     com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId challengeId,
                                     com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId codeVersionId,
                                     String defaultCode) {
-        // Convert value objects between bounded contexts
+        // Convert id objects between bounded contexts
         StudentId solutionsStudentId = new StudentId(studentId.id());
         ChallengeId solutionsChallengeId = new ChallengeId(challengeId.id());
         CodeVersionId solutionsCodeVersionId = new CodeVersionId(codeVersionId.id());
