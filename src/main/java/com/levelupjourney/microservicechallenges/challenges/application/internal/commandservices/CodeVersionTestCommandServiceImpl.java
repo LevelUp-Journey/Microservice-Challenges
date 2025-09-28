@@ -34,7 +34,7 @@ public class CodeVersionTestCommandServiceImpl implements CodeVersionTestCommand
     public void handle(UpdateCodeVersionTestCommand command) {
         // Find test by ID
         CodeVersionTest codeVersionTest = codeVersionTestRepository.findById(command.codeVersionTestId())
-                .orElseThrow(() -> new RuntimeException("Code version test not found: " + command.codeVersionTestId().value()));
+                .orElseThrow(() -> new RuntimeException("Code version test not found: " + command.codeVersionTestId().id()));
         
         // Update test details using business method with Optional handling
         codeVersionTest.updateTestDetails(

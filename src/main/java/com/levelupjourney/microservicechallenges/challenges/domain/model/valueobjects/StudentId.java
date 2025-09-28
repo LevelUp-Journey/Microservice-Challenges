@@ -1,6 +1,9 @@
 package com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects;
 
+import jakarta.persistence.Embeddable;
+
 import java.util.UUID;
 
-public record StudentId(UUID value) {
+@Embeddable
+public record StudentId(UUID id) {
 }

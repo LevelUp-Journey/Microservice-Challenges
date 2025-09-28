@@ -21,7 +21,7 @@ public class CodeVersionToBeSubmittedResourceFromEntityAssembler {
 
     public static CodeVersionTestForSubmittingResource toCodeVersionTestForSubmittingResourceFromEntity(CodeVersionTest codeVersionTest) {
         return new CodeVersionTestForSubmittingResource(
-                codeVersionTest.getId().value().toString(), // Use test ID, not CodeVersion ID
+                codeVersionTest.getId().id().toString(), // Use test ID, not CodeVersion ID
                 codeVersionTest.getInput(),
                 codeVersionTest.getExpectedOutput(),
                 codeVersionTest.getCustomValidationCode()

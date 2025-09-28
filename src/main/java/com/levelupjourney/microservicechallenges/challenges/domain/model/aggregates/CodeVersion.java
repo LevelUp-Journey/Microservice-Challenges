@@ -22,7 +22,7 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
     private CodeVersionId id;
 
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "challenge_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "challenge_id"))
     private ChallengeId challengeId;
 
     @Enumerated(EnumType.STRING)

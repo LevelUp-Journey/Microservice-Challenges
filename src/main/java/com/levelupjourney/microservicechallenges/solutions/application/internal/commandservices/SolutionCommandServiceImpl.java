@@ -50,21 +50,21 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         );
 
         if (solution.isEmpty()) {
-            throw new IllegalArgumentException("Solution not found: " + command.solutionId().value());
+            throw new IllegalArgumentException("Solution not found: " + command.solutionId().id());
         }
 
         var existingSolution = solution.get();
 
         // 2. Get code version details (language + tests) through ACL
         var codeVersionDetails = externalChallengesService.getCodeVersionDetailsForSubmission(
-            existingSolution.getCodeVersionId().value().toString()
+            existingSolution.getCodeVersionId().id().toString()
         );
 
         // 3. Submit solution for execution using CodeRunner with all required data
         var executionResult = codeExecutionGrpcService.executeCodeWithTests(
-            command.solutionId().value().toString(),
-            existingSolution.getCodeVersionId().value().toString(),
-            command.studentId().value().toString(),
+            command.solutionId().id().toString(),
+            existingSolution.getCodeVersionId().id().toString(),
+            command.studentId().id().toString(),
             command.code(),
             codeVersionDetails.codeLanguage(), // Use language from CodeVersion
             codeVersionDetails.tests() // Pass all tests to CodeRunner
@@ -88,7 +88,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         );
 
         if (solution.isEmpty()) {
-            throw new IllegalArgumentException("Solution not found: " + command.solutionId().value());
+            throw new IllegalArgumentException("Solution not found: " + command.solutionId().id());
         }
 
         var existingSolution = solution.get();

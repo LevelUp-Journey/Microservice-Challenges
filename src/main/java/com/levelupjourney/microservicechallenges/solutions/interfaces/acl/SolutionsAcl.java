@@ -30,9 +30,9 @@ public class SolutionsAcl {
                                     com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId codeVersionId,
                                     String defaultCode) {
         // Convert value objects between bounded contexts
-        StudentId solutionsStudentId = new StudentId(studentId.value());
-        ChallengeId solutionsChallengeId = new ChallengeId(challengeId.value());
-        CodeVersionId solutionsCodeVersionId = new CodeVersionId(codeVersionId.value());
+        StudentId solutionsStudentId = new StudentId(studentId.id());
+        ChallengeId solutionsChallengeId = new ChallengeId(challengeId.id());
+        CodeVersionId solutionsCodeVersionId = new CodeVersionId(codeVersionId.id());
 
         CreateSolutionCommand command = new CreateSolutionCommand(
             solutionsChallengeId,

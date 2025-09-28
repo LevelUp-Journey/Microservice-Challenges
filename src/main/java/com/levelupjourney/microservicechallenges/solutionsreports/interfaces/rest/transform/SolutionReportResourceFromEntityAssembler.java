@@ -9,12 +9,12 @@ public class SolutionReportResourceFromEntityAssembler {
     
     public static SolutionReportResource toResourceFromEntity(SolutionReport entity) {
         return new SolutionReportResource(
-                entity.getId().value().toString(),
-                entity.getSolutionId().value().toString(),
-                entity.getStudentId().value().toString(),
+                entity.getId().id().toString(),
+                entity.getSolutionId().id().toString(),
+                entity.getStudentId().id().toString(),
                 entity.getSuccessfulTests() != null ? 
                     entity.getSuccessfulTests().stream()
-                            .map(testId -> testId.value().toString())
+                            .map(testId -> testId.id().toString())
                             .collect(Collectors.toList()) : null,
                 entity.getTimeTaken(),
                 entity.getMemoryUsed(),

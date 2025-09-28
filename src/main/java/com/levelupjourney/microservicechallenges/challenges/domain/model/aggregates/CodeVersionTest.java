@@ -19,7 +19,7 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
     private CodeVersionTestId id;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "code_version_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "code_version_id"))
     private CodeVersionId codeVersionId;
     
     private String input;

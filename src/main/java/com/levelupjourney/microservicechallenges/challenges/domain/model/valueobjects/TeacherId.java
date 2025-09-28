@@ -5,5 +5,5 @@ import jakarta.persistence.Embeddable;
 import java.util.UUID;
 
 @Embeddable
-public record TeacherId(UUID value) {
+public record TeacherId(UUID id) {
 }

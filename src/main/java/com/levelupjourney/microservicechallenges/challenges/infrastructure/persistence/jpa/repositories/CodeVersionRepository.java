@@ -16,18 +16,18 @@ import java.util.UUID;
 public interface CodeVersionRepository extends JpaRepository<CodeVersion, CodeVersionId> {
 
     // Find code versions by challenge using clean method name
-    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.value = :challengeId")
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId")
     List<CodeVersion> findByChallengeId(@Param("challengeId") UUID challengeId);
 
     // Find code version by challenge and language using clean method name
-    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.value = :challengeId AND cv.language = :language")
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId AND cv.language = :language")
     Optional<CodeVersion> findByChallengeIdAndLanguage(@Param("challengeId") UUID challengeId, @Param("language") CodeLanguage language);
 
     // Find all code versions for a specific challenge and language
-    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.value = :challengeId AND cv.language = :language")
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId AND cv.language = :language")
     List<CodeVersion> findByChallengeAndLanguage(@Param("challengeId") UUID challengeId, @Param("language") CodeLanguage language);
 
     // Count code versions for a challenge using clean method name
-    @Query("SELECT COUNT(cv) FROM CodeVersion cv WHERE cv.challengeId.value = :challengeId")
+    @Query("SELECT COUNT(cv) FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId")
     long countByChallengeId(@Param("challengeId") UUID challengeId);
 }

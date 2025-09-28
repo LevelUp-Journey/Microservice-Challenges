@@ -5,5 +5,5 @@ import jakarta.persistence.Embeddable;
 import java.util.UUID;
 
 @Embeddable
-public record ChallengeId(UUID value) {
+public record ChallengeId(UUID id) {
 }

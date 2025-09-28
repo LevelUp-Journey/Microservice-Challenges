@@ -22,16 +22,16 @@ public class SolutionReport extends AuditableAbstractAggregateRoot<SolutionRepor
     private SolutionReportId id;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "solution_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "solution_id"))
     private SolutionId solutionId;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "student_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "student_id"))
     private StudentId studentId;
     
     @ElementCollection
     @CollectionTable(name = "solution_report_successful_tests", joinColumns = @JoinColumn(name = "solution_report_id"))
-    @AttributeOverride(name = "value", column = @Column(name = "code_version_test_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "code_version_test_id"))
     private List<CodeVersionTestId> successfulTests;
     
     private Double timeTaken;

@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface ChallengeRepository extends JpaRepository<Challenge, ChallengeId> {
 
     // Find challenges by teacher ID using clean method name
-    @Query("SELECT c FROM Challenge c WHERE c.teacherId.value = :teacherId")
+    @Query("SELECT c FROM Challenge c WHERE c.teacherId.id = :teacherId")
     List<Challenge> findByTeacherId(@Param("teacherId") UUID teacherId);
 
     // Find challenges by status

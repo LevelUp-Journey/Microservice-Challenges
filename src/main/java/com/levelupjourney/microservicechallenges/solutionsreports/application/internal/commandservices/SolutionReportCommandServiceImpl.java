@@ -45,11 +45,11 @@ public class SolutionReportCommandServiceImpl implements SolutionReportCommandSe
     public boolean handle(DeleteSolutionReportBySolutionIdCommand command) {
         try {
             // Check if solution report exists
-            var exists = solutionReportRepository.existsBySolutionId(command.solutionId().value());
+            var exists = solutionReportRepository.existsBySolutionId(command.solutionId().id());
             
             if (exists) {
                 // Delete the solution report by solution ID
-                solutionReportRepository.deleteBySolutionId(command.solutionId().value());
+                solutionReportRepository.deleteBySolutionId(command.solutionId().id());
                 return true;
             }
             
@@ -89,7 +89,7 @@ public class SolutionReportCommandServiceImpl implements SolutionReportCommandSe
     public int handle(DeleteSolutionReportsByStudentIdCommand command) {
         try {
             // Get all reports by student ID to count them
-            var reports = solutionReportRepository.findByStudentId(command.studentId().value());
+            var reports = solutionReportRepository.findByStudentId(command.studentId().id());
             int count = reports.size();
             
             if (count > 0) {

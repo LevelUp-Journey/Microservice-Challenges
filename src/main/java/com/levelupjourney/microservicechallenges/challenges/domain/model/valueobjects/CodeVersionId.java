@@ -5,5 +5,5 @@ import jakarta.persistence.Embeddable;
 import java.util.UUID;
 
 @Embeddable
-public record CodeVersionId(UUID value) {
+public record CodeVersionId(UUID id) {
 }

@@ -26,6 +26,6 @@ public class CodeVersionQueryServiceImpl implements CodeVersionQueryService {
 
     @Override
     public List<CodeVersion> handle(GetCodeVersionsByChallengeIdQuery query) {
-        return codeVersionRepository.findByChallengeId(query.challengeId().value());
+        return codeVersionRepository.findByChallengeId(query.challengeId().id());
     }
 }

@@ -26,11 +26,11 @@ public class CodeVersionTestQueryServiceImpl implements CodeVersionTestQueryServ
 
     @Override
     public List<CodeVersionTest> getCodeVersionTestsByCodeVersionId(CodeVersionId codeVersionId) {
-        return codeVersionTestRepository.findByCodeVersionIdOrderByCreatedAt(codeVersionId.value());
+        return codeVersionTestRepository.findByCodeVersionIdOrderByCreatedAt(codeVersionId.id());
     }
 
     @Override
     public long countTestsByCodeVersionId(CodeVersionId codeVersionId) {
-        return codeVersionTestRepository.countByCodeVersionId(codeVersionId.value());
+        return codeVersionTestRepository.countByCodeVersionId(codeVersionId.id());
     }
 }

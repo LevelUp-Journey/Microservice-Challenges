@@ -23,7 +23,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     private ChallengeId id;
 
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "teacher_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "teacher_id"))
     private TeacherId teacherId;
 
     @Column(nullable = false)

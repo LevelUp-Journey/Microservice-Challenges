@@ -15,19 +15,19 @@ import java.util.UUID;
 public interface CodeVersionTestRepository extends JpaRepository<CodeVersionTest, CodeVersionTestId> {
 
     // Find all tests for a specific code version using clean method name
-    @Query("SELECT cvt FROM CodeVersionTest cvt WHERE cvt.codeVersionId.value = :codeVersionId")
+    @Query("SELECT cvt FROM CodeVersionTest cvt WHERE cvt.codeVersionId.id = :codeVersionId")
     List<CodeVersionTest> findByCodeVersionId(@Param("codeVersionId") UUID codeVersionId);
 
     // Find tests by code version with ordering using clean method name
-    @Query("SELECT cvt FROM CodeVersionTest cvt WHERE cvt.codeVersionId.value = :codeVersionId ORDER BY cvt.createdAt")
+    @Query("SELECT cvt FROM CodeVersionTest cvt WHERE cvt.codeVersionId.id = :codeVersionId ORDER BY cvt.createdAt")
     List<CodeVersionTest> findByCodeVersionIdOrderByCreatedAt(@Param("codeVersionId") UUID codeVersionId);
 
     // Count tests for a code version using clean method name
-    @Query("SELECT COUNT(cvt) FROM CodeVersionTest cvt WHERE cvt.codeVersionId.value = :codeVersionId")
+    @Query("SELECT COUNT(cvt) FROM CodeVersionTest cvt WHERE cvt.codeVersionId.id = :codeVersionId")
     long countByCodeVersionId(@Param("codeVersionId") UUID codeVersionId);
 
     // Delete all tests for a code version using clean method name
     @Modifying
-    @Query("DELETE FROM CodeVersionTest cvt WHERE cvt.codeVersionId.value = :codeVersionId")
+    @Query("DELETE FROM CodeVersionTest cvt WHERE cvt.codeVersionId.id = :codeVersionId")
     void deleteByCodeVersionId(@Param("codeVersionId") UUID codeVersionId);
 }

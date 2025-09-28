@@ -18,15 +18,15 @@ public class Solution extends AuditableAbstractAggregateRoot<Solution> {
     private SolutionId id;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "challenge_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "challenge_id"))
     private ChallengeId challengeId;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "code_version_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "code_version_id"))
     private CodeVersionId codeVersionId;
     
     @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "student_id"))
+    @AttributeOverride(name = "id", column = @Column(name = "student_id"))
     private StudentId studentId;
     
     @Embedded

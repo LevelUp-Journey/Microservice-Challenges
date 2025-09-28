@@ -24,7 +24,7 @@ public class SolutionReportQueryServiceImpl implements SolutionReportQueryServic
     public Optional<SolutionReport> handle(GetReportsBySolutionIdQuery query) {
         try {
             // Find solution report by solution ID
-            return solutionReportRepository.findBySolutionId(query.solutionId().value());
+            return solutionReportRepository.findBySolutionId(query.solutionId().id());
             
         } catch (Exception e) {
             // Log error and return empty optional
@@ -37,7 +37,7 @@ public class SolutionReportQueryServiceImpl implements SolutionReportQueryServic
     public List<SolutionReport> handle(GetReportsByStudentIdQuery query) {
         try {
             // Find all solution reports by student ID
-            return solutionReportRepository.findByStudentId(query.studentId().value());
+            return solutionReportRepository.findByStudentId(query.studentId().id());
             
         } catch (Exception e) {
             // Log error and return empty list
