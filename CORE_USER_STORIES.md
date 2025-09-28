@@ -2,7 +2,7 @@
 
 ## Primary User Stories
 
-### Epic 1.4: Publish Challenge
+### Epic 1.4: Publish Draft Challenge to Make it Available for Students
 **As a Teacher**, I want to publish my completed challenges, so that students can start working on them.
 
 **Acceptance Criteria:**
@@ -21,7 +21,7 @@ Scenario: Cannot publish without code versions
 ```
 **Story Points**: 3
 
-### Epic 2.1: Start Challenge
+### Epic 2.1: Start Working on Published Challenge and Create Initial Solution
 **As a Student**, I want to start working on a published challenge, so that I can begin developing my solution.
 
 **Acceptance Criteria:**
@@ -42,7 +42,7 @@ Scenario: Cannot start unpublished challenge
 ```
 **Story Points**: 5
 
-### Epic 2.3: Submit Solution for Testing
+### Epic 2.3: Submit Solution Code for Automated Testing and Evaluation
 **As a Student**, I want to submit my solution for automatic evaluation, so that I can see if it passes all test cases.
 
 **Acceptance Criteria:**
@@ -69,7 +69,7 @@ Scenario: Solution fails some tests
 ```
 **Story Points**: 13
 
-### Epic 3.1: Execute Code via gRPC
+### Epic 3.1: Execute Student Code via gRPC Communication with External CodeRunner Service
 **As a Developer**, I want the system to communicate with CodeRunner service via gRPC, so that student code can be executed in an isolated environment.
 
 **Acceptance Criteria:**
@@ -89,7 +89,7 @@ Scenario: Handle execution timeout
 ```
 **Story Points**: 8
 
-### Epic 3.2: Generate Solution Report
+### Epic 3.2: Generate Detailed Execution Report with Performance Metrics and Test Results
 **As a Developer**, I want detailed execution reports to be created automatically, so that students can understand their performance.
 
 **Acceptance Criteria:**
@@ -118,11 +118,11 @@ Scenario: Report with partial success
 
 These 5 user stories represent the **critical path** of the platform:
 
-1. **Epic 1.4: Publish Challenge** → Makes content available to students
-2. **Epic 2.1: Start Challenge** → Initiates the learning process
-3. **Epic 2.3: Submit Solution** → Core business transaction (evaluation request)
-4. **Epic 3.1: Execute Code** → Technical validation of solutions
-5. **Epic 3.2: Generate Report** → Provides feedback and closes the learning cycle
+1. **Epic 1.4: Publish Draft Challenge to Make it Available for Students** → Makes content available to students
+2. **Epic 2.1: Start Working on Published Challenge and Create Initial Solution** → Initiates the learning process
+3. **Epic 2.3: Submit Solution Code for Automated Testing and Evaluation** → Core business transaction (evaluation request)
+4. **Epic 3.1: Execute Student Code via gRPC Communication with External CodeRunner Service** → Technical validation of solutions
+5. **Epic 3.2: Generate Detailed Execution Report with Performance Metrics and Test Results** → Provides feedback and closes the learning cycle
 
 **Total Story Points**: 34
 **Business Impact**: High - These stories enable the complete challenge-solution-evaluation cycle</content>

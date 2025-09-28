@@ -3,7 +3,7 @@
 ## Epic 1: Challenge Management
 **Description**: Teachers need to create, configure, and publish programming challenges for students
 
-### User Story 1.1: Create Challenge
+### User Story 1.1: Create New Programming Challenge with Basic Information and Experience Points
 **As a Teacher**, I want to create a new programming challenge with basic information, so that students can work on coding problems.
 
 **Acceptance Criteria:**
@@ -23,7 +23,7 @@ Scenario: Validation fails for missing required fields
 ```
 **Story Points**: 3
 
-### User Story 1.2: Add Code Version to Challenge
+### User Story 1.2: Add Multiple Programming Language Versions to Existing Challenge
 **As a Teacher**, I want to add language-specific versions to my challenges, so that students can solve the same problem in different programming languages.
 
 **Acceptance Criteria:**
@@ -43,7 +43,7 @@ Scenario: Add multiple language versions
 ```
 **Story Points**: 5
 
-### User Story 1.3: Configure Test Cases
+### User Story 1.3: Define Comprehensive Test Cases with Input/Output and Custom Validation
 **As a Teacher**, I want to define test cases for each code version, so that student solutions can be automatically validated.
 
 **Acceptance Criteria:**
@@ -63,7 +63,7 @@ Scenario: Add test with custom validation code
 ```
 **Story Points**: 8
 
-### User Story 1.4: Publish Challenge
+### User Story 1.4: Publish Draft Challenge to Make it Available for Students
 **As a Teacher**, I want to publish my completed challenges, so that students can start working on them.
 
 **Acceptance Criteria:**
@@ -82,7 +82,7 @@ Scenario: Cannot publish without code versions
 ```
 **Story Points**: 3
 
-### User Story 1.5: Update Challenge Details
+### User Story 1.5: Update Challenge Information Including Name, Description and Experience Points
 **As a Teacher**, I want to modify my challenge information, so that I can improve or correct challenge content.
 
 **Acceptance Criteria:**
@@ -103,7 +103,7 @@ Scenario: Update experience points
 ## Epic 2: Solution Submission
 **Description**: Students need to start challenges, develop solutions, and submit them for evaluation
 
-### User Story 2.1: Start Challenge
+### User Story 2.1: Start Working on Published Challenge and Create Initial Solution
 **As a Student**, I want to start working on a published challenge, so that I can begin developing my solution.
 
 **Acceptance Criteria:**
@@ -124,7 +124,7 @@ Scenario: Cannot start unpublished challenge
 ```
 **Story Points**: 5
 
-### User Story 2.2: Update Solution Code
+### User Story 2.2: Save and Update Solution Code Progress During Development
 **As a Student**, I want to save my progress while developing the solution, so that I don't lose my work.
 
 **Acceptance Criteria:**
@@ -144,7 +144,7 @@ Scenario: Update with invalid code
 ```
 **Story Points**: 3
 
-### User Story 2.3: Submit Solution for Testing
+### User Story 2.3: Submit Solution Code for Automated Testing and Evaluation
 **As a Student**, I want to submit my solution for automatic evaluation, so that I can see if it passes all test cases.
 
 **Acceptance Criteria:**
@@ -171,7 +171,7 @@ Scenario: Solution fails some tests
 ```
 **Story Points**: 13
 
-### User Story 2.4: View Solution History
+### User Story 2.4: View Complete Solution History with Performance Metrics and Results
 **As a Student**, I want to see all my previous submissions and their results, so that I can track my progress.
 
 **Acceptance Criteria:**
@@ -194,7 +194,7 @@ Scenario: View specific solution details
 ## Epic 3: Code Execution & Reporting
 **Description**: The system needs to execute student code and generate detailed reports
 
-### User Story 3.1: Execute Code via gRPC
+### User Story 3.1: Execute Student Code via gRPC Communication with External CodeRunner Service
 **As a Developer**, I want the system to communicate with CodeRunner service via gRPC, so that student code can be executed in an isolated environment.
 
 **Acceptance Criteria:**
@@ -214,7 +214,7 @@ Scenario: Handle execution timeout
 ```
 **Story Points**: 8
 
-### User Story 3.2: Generate Solution Report
+### User Story 3.2: Generate Detailed Execution Report with Performance Metrics and Test Results
 **As a Developer**, I want detailed execution reports to be created automatically, so that students can understand their performance.
 
 **Acceptance Criteria:**
@@ -239,7 +239,7 @@ Scenario: Report with partial success
 ```
 **Story Points**: 5
 
-### User Story 3.3: ACL Data Retrieval
+### User Story 3.3: Implement ACL for Secure Challenge Data Retrieval Across Bounded Contexts
 **As a Developer**, I want the ACL to efficiently retrieve challenge data, so that solutions can access test cases without tight coupling.
 
 **Acceptance Criteria:**
@@ -262,7 +262,7 @@ Scenario: Get challenge metadata
 ## Epic 4: Platform Administration
 **Description**: Developers need tools to manage and monitor the platform
 
-### User Story 4.1: Query Published Challenges
+### User Story 4.1: Query and Retrieve All Published Challenges for Platform Display
 **As a Developer**, I want to retrieve all published challenges efficiently, so that the platform can display available content.
 
 **Acceptance Criteria:**
@@ -281,7 +281,7 @@ Scenario: Filter challenges by teacher
 ```
 **Story Points**: 3
 
-### User Story 4.2: Manage Solution Reports
+### User Story 4.2: Manage and Clean Up Solution Reports for Database Optimization
 **As a Developer**, I want to clean up old solution reports, so that the database doesn't grow indefinitely.
 
 **Acceptance Criteria:**
@@ -299,7 +299,7 @@ Scenario: Delete reports by solution
 ```
 **Story Points**: 3
 
-### User Story 4.3: Challenge Version Management
+### User Story 4.3: Update Challenge Code Versions and Test Cases for Content Maintenance
 **As a Developer**, I want to update code versions and tests, so that challenges can be improved over time.
 
 **Acceptance Criteria:**
