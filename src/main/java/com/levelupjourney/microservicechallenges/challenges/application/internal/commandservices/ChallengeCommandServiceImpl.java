@@ -2,15 +2,20 @@ package com.levelupjourney.microservicechallenges.challenges.application.interna
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.PublishChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AssignTagToChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UnassignTagFromChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.events.ChallengeStartedEvent;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetTagByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
+import com.levelupjourney.microservicechallenges.challenges.domain.services.TagQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,13 +26,16 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
     private final ChallengeRepository challengeRepository;
     private final CodeVersionQueryService codeVersionQueryService;
+    private final TagQueryService tagQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
     public ChallengeCommandServiceImpl(ChallengeRepository challengeRepository,
                                      CodeVersionQueryService codeVersionQueryService,
+                                     TagQueryService tagQueryService,
                                      ApplicationEventPublisher eventPublisher) {
         this.challengeRepository = challengeRepository;
         this.codeVersionQueryService = codeVersionQueryService;
+        this.tagQueryService = tagQueryService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -96,6 +104,42 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
             command.experiencePoints().orElse(null),
             command.tags().orElse(null)
         );
+
+        // Save the updated challenge
+        challengeRepository.save(challenge);
+    }
+
+    @Override
+    @Transactional
+    public void handle(AssignTagToChallengeCommand command) {
+        // Find the challenge by ID
+        Challenge challenge = challengeRepository.findById(command.challengeId())
+                .orElseThrow(() -> new IllegalArgumentException("Challenge not found with ID: " + command.challengeId().id()));
+
+        // Find the tag by ID
+        Tag tag = tagQueryService.handle(new GetTagByIdQuery(command.tagId()))
+                .orElseThrow(() -> new IllegalArgumentException("Tag not found with ID: " + command.tagId().id()));
+
+        // Add tag to challenge using business method
+        challenge.addTag(tag);
+
+        // Save the updated challenge
+        challengeRepository.save(challenge);
+    }
+
+    @Override
+    @Transactional
+    public void handle(UnassignTagFromChallengeCommand command) {
+        // Find the challenge by ID
+        Challenge challenge = challengeRepository.findById(command.challengeId())
+                .orElseThrow(() -> new IllegalArgumentException("Challenge not found with ID: " + command.challengeId().id()));
+
+        // Find the tag by ID
+        Tag tag = tagQueryService.handle(new GetTagByIdQuery(command.tagId()))
+                .orElseThrow(() -> new IllegalArgumentException("Tag not found with ID: " + command.tagId().id()));
+
+        // Remove tag from challenge using business method
+        challenge.removeTag(tag);
 
         // Save the updated challenge
         challengeRepository.save(challenge);

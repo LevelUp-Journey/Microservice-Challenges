@@ -1,7 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.entities.ChallengeTag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
@@ -41,8 +40,13 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersion> versions = new ArrayList<>();
     
-    @OneToMany(mappedBy = "challenge", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ChallengeTag> tags = new ArrayList<>();
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "challenge_tags",
+        joinColumns = @JoinColumn(name = "challenge_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<Tag> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {
         this.id = new ChallengeId(UUID.randomUUID());
@@ -65,7 +69,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, List<ChallengeTag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, List<Tag> tags) {
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
         }
@@ -76,23 +80,21 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
-            // Clear existing tags
+            // Replace all tags
             this.tags.clear();
-            // Add new tags ensuring proper relationship
-            tags.forEach(this::addTag);
+            this.tags.addAll(tags);
         }
     }
 
-    // Helper method to maintain bidirectional relationship consistency
-    public void addTag(ChallengeTag tag) {
-        if (tag != null) {
+    // Helper method to add a tag to the challenge
+    public void addTag(Tag tag) {
+        if (tag != null && !this.tags.contains(tag)) {
             this.tags.add(tag);
-            tag.setChallenge(this);
         }
     }
 
-    // Helper method to remove a tag while maintaining consistency
-    public void removeTag(ChallengeTag tag) {
+    // Helper method to remove a tag from the challenge
+    public void removeTag(Tag tag) {
         if (tag != null) {
             this.tags.remove(tag);
         }

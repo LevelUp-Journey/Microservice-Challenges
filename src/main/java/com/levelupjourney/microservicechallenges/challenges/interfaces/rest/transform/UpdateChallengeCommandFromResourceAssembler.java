@@ -1,8 +1,9 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.entities.ChallengeTag;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TagId;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.UpdateChallengeResource;
 
 import java.util.Optional;
@@ -17,11 +18,7 @@ public class UpdateChallengeCommandFromResourceAssembler {
             resource.name(),
             resource.description(),
             resource.experiencePoints(),
-            Optional.ofNullable(resource.tags()).map(tags ->
-                tags.stream()
-                    .map(tagName -> new ChallengeTag(tagName, null, null ))
-                    .collect(Collectors.toList())
-            )
+            Optional.empty() // TODO: Implementar asignación de tags existentes por ID
         );
     }
 }

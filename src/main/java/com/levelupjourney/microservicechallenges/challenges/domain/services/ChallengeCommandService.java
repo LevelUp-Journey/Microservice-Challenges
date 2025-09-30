@@ -4,6 +4,8 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.command
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.PublishChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AssignTagToChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UnassignTagFromChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 
 public interface ChallengeCommandService {
@@ -11,4 +13,6 @@ public interface ChallengeCommandService {
     void handle(StartChallengeCommand command);
     ChallengeId handle(PublishChallengeCommand command);
     void handle(UpdateChallengeCommand command);
+    void handle(AssignTagToChallengeCommand command);
+    void handle(UnassignTagFromChallengeCommand command);
 }
