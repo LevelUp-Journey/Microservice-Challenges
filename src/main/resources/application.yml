@@ -28,15 +28,13 @@ grpc:
       address: static://localhost:9084
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
-      max-outbound-message-size: 8MB
 
     # Fallback CodeRunner service (FIXED: removed grpc:// scheme)
     code-runner-fallback:
       address: static://localhost:9084
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
-      max-outbound-message-size: 8MB
-      
+
 # Enhanced Logging configuration for detailed gRPC debugging
 logging:
   level:
