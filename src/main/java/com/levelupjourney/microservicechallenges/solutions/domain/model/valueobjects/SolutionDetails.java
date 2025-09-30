@@ -17,6 +17,7 @@ public class SolutionDetails {
 
     @NotNull
     @Setter
+    @Lob
     @Column(columnDefinition = "TEXT")
     private String code;
 

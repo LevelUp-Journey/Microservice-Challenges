@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -120,22 +121,43 @@ public class SolutionController {
     @PostMapping("/{solutionId}/submit")
     public ResponseEntity<SubmissionResultResource> submitSolution(@PathVariable String solutionId,
                                                                    @RequestBody SubmitSolutionResource resource) {
-        // Transform resource to domain command
-        var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
+        try {
+            // Transform resource to domain command
+            var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
 
-        // Execute command through domain service
-        var solutionReportId = solutionCommandService.handle(command);
+            // Execute command through domain service
+            var submissionResult = solutionCommandService.handle(command);
 
-        // Return success response with submission result
-        if (solutionReportId.isPresent()) {
+            // Transform domain result to resource
             var result = new SubmissionResultResource(
-                    solutionReportId.get().value().toString(),
-                    "Solution submitted successfully for evaluation"
+                    submissionResult.solutionReportId() != null ? 
+                        submissionResult.solutionReportId().value().toString() : null,
+                    submissionResult.message(),
+                    submissionResult.success(),
+                    submissionResult.approvedTestIds(),
+                    submissionResult.totalTests(),
+                    submissionResult.getPassedTests(),
+                    submissionResult.executionDetails()
             );
-            return ResponseEntity.ok(result);
-        }
 
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            if (submissionResult.success()) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+            
+        } catch (Exception e) {
+            var errorResult = new SubmissionResultResource(
+                    null,
+                    "Internal server error during submission: " + e.getMessage(),
+                    false,
+                    List.of(),
+                    0,
+                    0,
+                    "Unexpected error occurred"
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
+        }
     }
 
     // Get solution by challenge ID, code version ID and student ID

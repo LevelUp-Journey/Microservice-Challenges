@@ -8,17 +8,20 @@ import com.levelupjourney.microservicechallenges.solutions.domain.model.commands
 import com.levelupjourney.microservicechallenges.solutions.domain.model.commands.UpdateSolutionCommand;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByIdQuery;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionReportId;
+import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SubmissionResult;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionCommandService;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionQueryService;
 import com.levelupjourney.microservicechallenges.solutions.infrastructure.persistence.jpa.repositories.SolutionRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class SolutionCommandServiceImpl implements SolutionCommandService {
     private final ExternalChallengesService externalChallengesService;
     private final SolutionQueryService solutionQueryService;
@@ -43,41 +46,126 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
     }
 
     @Override
-    public Optional<SolutionReportId> handle(SubmitSolutionCommand command) {
+    public SubmissionResult handle(SubmitSolutionCommand command) {
+        // 📝 LOG INICIAL DE LA SUBMISSION
+        log.info("🎯 =============== SUBMIT SOLUTION PROCESS STARTED ===============");
+        log.info("📋 Submit Solution Command received:");
+        log.info("  - Solution ID: '{}'", command.solutionId().id());
+        log.info("  - Student ID: '{}'", command.studentId().id());
+        log.info("  - Code length: {} characters", command.code() != null ? command.code().length() : 0);
+        
+        if (command.code() != null && !command.code().trim().isEmpty()) {
+            String codePreview = command.code().length() > 200 ? command.code().substring(0, 200) + "..." : command.code();
+            log.info("  - Code preview:\n{}", codePreview);
+        }
+        
         // 1. Verify solution exists and get its CodeVersion
+        log.info("🔍 Step 1: Validating solution exists...");
         var solution = solutionQueryService.handle(
                 new GetSolutionByIdQuery(command.solutionId())
         );
 
         if (solution.isEmpty()) {
-            throw new IllegalArgumentException("Solution not found: " + command.solutionId().id());
+            log.error("❌ Solution not found: {}", command.solutionId().id());
+            return SubmissionResult.failure("Solution not found: " + command.solutionId().id());
         }
 
         var existingSolution = solution.get();
+        log.info("✅ Solution found:");
+        log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id());
+        log.info("  - Current status: '{}'", existingSolution.getDetails().getStatus());
 
-        // 2. Get code version details (language + tests) through ACL
-        var codeVersionDetails = externalChallengesService.getCodeVersionDetailsForSubmission(
-            existingSolution.getCodeVersionId().id().toString()
-        );
+        try {
+            // 2. Get code version details (language + tests) through ACL
+            log.info("🔍 Step 2: Fetching CodeVersion details from external service...");
+            var codeVersionDetails = externalChallengesService.getCodeVersionDetailsForSubmission(
+                existingSolution.getCodeVersionId().id().toString()
+            );
 
-        // 3. Submit solution for execution using CodeRunner with all required data
-        var executionResult = codeExecutionGrpcService.executeCodeWithTests(
-            command.solutionId().id().toString(),
-            existingSolution.getCodeVersionId().id().toString(),
-            command.studentId().id().toString(),
-            command.code(),
-            codeVersionDetails.codeLanguage(), // Use language from CodeVersion
-            codeVersionDetails.tests() // Pass all tests to CodeRunner
-        );
+            log.info("✅ CodeVersion details retrieved:");
+            log.info("  - Programming Language: '{}'", codeVersionDetails.codeLanguage());
+            log.info("  - Total Tests: {}", codeVersionDetails.tests().size());
+            log.info("  - Tests summary:");
+            
+            // Log details of first few tests
+            for (int i = 0; i < Math.min(codeVersionDetails.tests().size(), 3); i++) {
+                var test = codeVersionDetails.tests().get(i);
+                log.info("    * Test {}: ID='{}', Input='{}', Expected='{}'", 
+                        i + 1, test.id(),
+                        test.input().length() > 30 ? test.input().substring(0, 30) + "..." : test.input(),
+                        test.expectedOutput().length() > 30 ? test.expectedOutput().substring(0, 30) + "..." : test.expectedOutput());
+            }
 
-        if (executionResult.isSuccess()) {
-            // Create solution report with approved test IDs
-            var approvedTestIds = executionResult.getApprovedTestIds();
-            // TODO: Create actual SolutionReport entity with approved test IDs
-            return Optional.of(new SolutionReportId(UUID.randomUUID()));
+            // 3. Submit solution for execution using enhanced CodeRunner with all required data
+            log.info("🚀 Step 3: Submitting to CodeRunner via gRPC...");
+            log.info("📦 Preparing gRPC execution request:");
+            log.info("  - Solution ID: '{}'", command.solutionId().id().toString());
+            log.info("  - Challenge ID (CodeVersion): '{}'", existingSolution.getCodeVersionId().id().toString());
+            log.info("  - Student ID: '{}'", command.studentId().id().toString());
+            log.info("  - Language: '{}'", codeVersionDetails.codeLanguage());
+            log.info("  - Code: {} characters", command.code().length());
+            log.info("  - Tests to validate: {}", codeVersionDetails.tests().size());
+            
+            var executionResult = codeExecutionGrpcService.executeCodeWithTests(
+                command.solutionId().id().toString(),
+                existingSolution.getCodeVersionId().id().toString(),
+                command.studentId().id().toString(),
+                command.code(),
+                codeVersionDetails.codeLanguage(), // Use language from CodeVersion
+                codeVersionDetails.tests() // Pass all tests to CodeRunner
+            );
+
+            // 📊 LOG RESULTADO FINAL
+            log.info("🎉 Step 4: Processing execution results...");
+            log.info("📊 Final execution summary:");
+            log.info("  - Execution Success: {}", executionResult.isSuccess());
+            log.info("  - Execution ID: '{}'", executionResult.getExecutionId());
+            log.info("  - Tests Passed: {}/{}", executionResult.getApprovedTestIds().size(), codeVersionDetails.tests().size());
+            log.info("  - Success Rate: {:.1f}%", 
+                    (executionResult.getApprovedTestIds().size() * 100.0) / codeVersionDetails.tests().size());
+            log.info("  - Message: '{}'", executionResult.getMessage());
+            log.info("  - Execution Details: '{}'", executionResult.getExecutionDetails());
+
+            if (executionResult.isSuccess()) {
+                // Create solution report with approved test IDs
+                var approvedTestIds = executionResult.getApprovedTestIds();
+                
+                log.info("✅ Solution executed successfully!");
+                log.info("📋 Creating solution report...");
+                
+                // TODO: Create actual SolutionReport entity with approved test IDs and execution metadata
+                var solutionReportId = new SolutionReportId(UUID.randomUUID());
+                log.info("  - Solution Report ID: '{}'", solutionReportId.value());
+                
+                // Enhanced message with execution details
+                String successMessage = String.format("Solution executed successfully via gRPC. %d out of %d tests passed.", 
+                                    approvedTestIds.size(), codeVersionDetails.tests().size());
+                
+                if (executionResult.getExecutionId() != null) {
+                    successMessage += String.format(" Execution ID: %s", executionResult.getExecutionId());
+                }
+                
+                log.info("🎯 =============== SUBMIT SOLUTION PROCESS COMPLETED SUCCESSFULLY ===============");
+                
+                return SubmissionResult.success(
+                    solutionReportId,
+                    approvedTestIds,
+                    codeVersionDetails.tests().size(),
+                    successMessage,
+                    executionResult.getExecutionDetails() // Include detailed execution information
+                );
+            }
+
+            log.warn("❌ gRPC execution failed for solution {}: {}", 
+                    command.solutionId().id(), executionResult.getMessage());
+            log.info("💥 =============== SUBMIT SOLUTION PROCESS FAILED ===============");
+            return SubmissionResult.failure("Code execution failed: " + executionResult.getMessage());
+            
+        } catch (Exception e) {
+            log.error("💥 =============== SUBMIT SOLUTION PROCESS ERROR ===============");
+            log.error("❌ Error executing solution {}: {}", command.solutionId().id(), e.getMessage(), e);
+            return SubmissionResult.failure("Error during code execution: " + e.getMessage());
         }
-
-        return Optional.empty();
     }
 
     @Override
