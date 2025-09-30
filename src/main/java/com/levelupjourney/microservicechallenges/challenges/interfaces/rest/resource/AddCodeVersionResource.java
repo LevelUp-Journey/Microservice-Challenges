@@ -1,4 +1,4 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource;
 
-public record AddCodeVersionResource(String challengeId, String language) {
+public record AddCodeVersionResource(String challengeId, String language, String defaultCode) {
 }

@@ -12,7 +12,8 @@ public class AddCodeVersionCommandFromResourceAssembler {
     public static AddCodeVersionCommand toCommandFromResource(AddCodeVersionResource resource) {
         return new AddCodeVersionCommand(
             new ChallengeId(UUID.fromString(resource.challengeId())),
-            CodeLanguage.valueOf(resource.language().toUpperCase())
+            CodeLanguage.valueOf(resource.language().toUpperCase()),
+            resource.defaultCode()
         );
     }
 }

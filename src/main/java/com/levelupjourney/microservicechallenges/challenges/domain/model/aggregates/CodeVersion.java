@@ -39,7 +39,7 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
         this.id = new CodeVersionId(UUID.randomUUID());
         this.challengeId = command.challengeId();
         this.language = command.language();
-        this.initialCode = ""; // Initial empty code
+        this.initialCode = command.defaultCode() != null ? command.defaultCode() : ""; // Use default code from command
     }
     
     // Business methods
