@@ -1,7 +1,9 @@
 package com.levelupjourney.microservicechallenges.solutions.interfaces.rest;
 
+import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByIdQuery;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByStudentIdAndCodeVersionIdQuery;
+import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionId;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.StudentId;
@@ -134,5 +136,31 @@ public class SolutionController {
         }
 
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // Get solution by challenge ID, code version ID and student ID
+    @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/students/{studentId}")
+    public ResponseEntity<SolutionResource> getSolutionByChallengeCodeVersionAndStudent(
+            @PathVariable String challengeId,
+            @PathVariable String codeVersionId,
+            @PathVariable String studentId) {
+
+        // Transform path variables to domain query
+        var query = new GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery(
+                new ChallengeId(UUID.fromString(challengeId)),
+                new CodeVersionId(UUID.fromString(codeVersionId)),
+                new StudentId(UUID.fromString(studentId))
+        );
+
+        // Execute query through domain service
+        var solution = solutionQueryService.handle(query);
+
+        // Transform domain entity to response resource if found
+        if (solution.isPresent()) {
+            var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(solution.get());
+            return new ResponseEntity<>(solutionResource, HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }

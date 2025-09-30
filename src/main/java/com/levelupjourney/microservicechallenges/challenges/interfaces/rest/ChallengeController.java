@@ -153,14 +153,17 @@ public class ChallengeController {
 
     // Start a challenge (for students)
     @PostMapping("/{challengeId}/start")
-    public ResponseEntity<String> startChallenge(@PathVariable String challengeId,
-                                               @RequestBody StartChallengeResource resource) {
+    public ResponseEntity<StartChallengeResponseResource> startChallenge(@PathVariable String challengeId,
+                                                                        @RequestBody StartChallengeResource resource) {
         // Transform resource to domain command
         var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
 
         // Execute command through domain service
         challengeCommandService.handle(command);
 
-        return new ResponseEntity<>("Challenge started successfully. A default solution has been created for the student.", HttpStatus.OK);
+        // Transform command data to response resource
+        var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command);
+
+        return new ResponseEntity<>(responseResource, HttpStatus.OK);
     }
 }

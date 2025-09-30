@@ -31,6 +31,10 @@ public interface SolutionRepository extends JpaRepository<Solution, SolutionId> 
     @Query("SELECT s FROM Solution s WHERE s.studentId.id = :studentId AND s.challengeId.id = :challengeId")
     List<Solution> findByStudentIdAndChallengeId(@Param("studentId") UUID studentId, @Param("challengeId") UUID challengeId);
 
+    // Find solution by challenge, code version and student using clean method names
+    @Query("SELECT s FROM Solution s WHERE s.challengeId.id = :challengeId AND s.codeVersionId.id = :codeVersionId AND s.studentId.id = :studentId")
+    Optional<Solution> findByChallengeIdAndCodeVersionIdAndStudentId(@Param("challengeId") UUID challengeId, @Param("codeVersionId") UUID codeVersionId, @Param("studentId") UUID studentId);
+
     // Find solutions by status
     List<Solution> findByDetails_Status(SolutionStatus status);
 

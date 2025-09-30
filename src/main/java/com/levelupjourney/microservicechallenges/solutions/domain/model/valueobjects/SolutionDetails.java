@@ -17,6 +17,7 @@ public class SolutionDetails {
 
     @NotNull
     @Setter
+    @Column(columnDefinition = "TEXT")
     private String code;
 
     @Temporal(TemporalType.TIMESTAMP)

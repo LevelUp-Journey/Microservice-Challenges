@@ -22,12 +22,20 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
     @AttributeOverride(name = "id", column = @Column(name = "code_version_id"))
     private CodeVersionId codeVersionId;
     
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String input;
     
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String expectedOutput;
     
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String customValidationCode;
     
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String failureMessage;
 
     public CodeVersionTest(AddCodeVersionTestCommand command) {
