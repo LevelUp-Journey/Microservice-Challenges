@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package com.levelupjourney.coderunner;
+
+option java_multiple_files = true;
+option java_package = "com.levelupjourney.microservicechallenges.coderunner.interfaces.grpc";
+option java_outer_classname = "CodeRunnerServiceProto";
+
+// Service for communicating with CodeRunner microservice
+service CodeRunnerService {
+    // Execute solution code with tests
+    rpc ExecuteSolution (ExecuteSolutionRequest) returns (ExecuteSolutionResponse);
+}
+
+// Request to execute solution code
+message ExecuteSolutionRequest {
+    string code_version_id = 1;        // ID of the code version
+    string student_id = 2;             // ID of the student
+    string language = 3;               // Programming language (configurable in docker)
+    string code = 4;                   // Solution code containing the function
+    repeated TestCase tests = 5;       // List of test cases
+}
+
+// Individual test case
+message TestCase {
+    string code_version_test_id = 1;   // Test ID
+    string input = 2;                  // Test input
+    string expected_output = 3;        // Expected output
+    string custom_validation_code = 4; // Custom validation code (can be empty)
+}
+
+// Response from code execution
+message ExecuteSolutionResponse {
+    repeated string passed_tests_id = 1; // IDs of successful tests
+    double time_taken = 2;               // Execution time in milliseconds
+}
+
+// Final response to client
+message SolutionExecutionResult {
+    repeated string passed_tests_id = 1; // IDs of successful tests
+    double time_taken = 2;               // Execution time in milliseconds
+    bool successful = 3;                 // True if all tests passed
+}

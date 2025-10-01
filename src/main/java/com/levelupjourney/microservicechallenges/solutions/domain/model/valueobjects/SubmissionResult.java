@@ -12,7 +12,8 @@ public record SubmissionResult(
         List<String> approvedTestIds,
         int totalTests,
         String message,
-        String executionDetails
+        String executionDetails,
+        double timeTaken
 ) {
     public int getPassedTests() {
         return approvedTestIds != null ? approvedTestIds.size() : 0;
@@ -21,16 +22,21 @@ public record SubmissionResult(
     public static SubmissionResult success(SolutionReportId reportId, List<String> approvedTestIds, 
                                          int totalTests, String message) {
         return new SubmissionResult(reportId, true, approvedTestIds, totalTests, message, 
-                                  "Executed via gRPC CodeRunner service");
+                                  "Executed via gRPC CodeRunner service", 0.0);
     }
     
     public static SubmissionResult success(SolutionReportId reportId, List<String> approvedTestIds, 
                                          int totalTests, String message, String executionDetails) {
-        return new SubmissionResult(reportId, true, approvedTestIds, totalTests, message, executionDetails);
+        return new SubmissionResult(reportId, true, approvedTestIds, totalTests, message, executionDetails, 0.0);
+    }
+    
+    public static SubmissionResult success(SolutionReportId reportId, List<String> approvedTestIds, 
+                                         int totalTests, String message, String executionDetails, double timeTaken) {
+        return new SubmissionResult(reportId, true, approvedTestIds, totalTests, message, executionDetails, timeTaken);
     }
     
     public static SubmissionResult failure(String message) {
         return new SubmissionResult(null, false, List.of(), 0, message, 
-                                  "Execution failed");
+                                  "Execution failed", 0.0);
     }
 }

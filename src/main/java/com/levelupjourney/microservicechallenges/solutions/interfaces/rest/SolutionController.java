@@ -137,7 +137,8 @@ public class SolutionController {
                     submissionResult.approvedTestIds(),
                     submissionResult.totalTests(),
                     submissionResult.getPassedTests(),
-                    submissionResult.executionDetails()
+                    submissionResult.executionDetails(),
+                    submissionResult.timeTaken()
             );
 
             if (submissionResult.success()) {
@@ -154,7 +155,8 @@ public class SolutionController {
                     List.of(),
                     0,
                     0,
-                    "Unexpected error occurred"
+                    "Unexpected error occurred",
+                    0.0
             );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
         }

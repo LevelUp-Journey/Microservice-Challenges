@@ -9,6 +9,7 @@ public record SubmissionResultResource(
         List<String> approvedTestIds,
         int totalTests,
         int passedTests,
-        String executionDetails
+        String executionDetails,
+        double timeTaken
 ) {
 }
