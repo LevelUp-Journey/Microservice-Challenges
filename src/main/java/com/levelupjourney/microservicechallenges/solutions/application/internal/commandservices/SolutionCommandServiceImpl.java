@@ -98,16 +98,16 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             // 3. Submit solution for execution using CodeRunner microservice
             log.info("🚀 Step 3: Submitting to CodeRunner via gRPC...");
             log.info("📦 Preparing gRPC execution request:");
+            log.info("  - Challenge ID: '{}'", existingSolution.getChallengeId().id().toString());
             log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id().toString());
             log.info("  - Student ID: '{}'", command.studentId().id().toString());
-            log.info("  - Language: '{}'", codeVersionDetails.codeLanguage());
             log.info("  - Code: {} characters", command.code().length());
             log.info("  - Tests to validate: {}", codeVersionDetails.tests().size());
             
             var executionResult = codeRunnerExecutionService.executeSolution(
+                existingSolution.getChallengeId().id().toString(),
                 existingSolution.getCodeVersionId().id().toString(),
                 command.studentId().id().toString(),
-                codeVersionDetails.codeLanguage(),
                 command.code(),
                 codeVersionDetails.tests()
             );
@@ -115,12 +115,20 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             // 📊 LOG RESULTADO FINAL
             log.info("🎉 Step 4: Processing execution results...");
             log.info("📊 Final execution summary:");
-            log.info("  - All Tests Passed: {}", executionResult.successful());
-            log.info("  - Tests Passed: {}/{}", executionResult.passedTestsId().size(), codeVersionDetails.tests().size());
-            log.info("  - Success Rate: {:.1f}%", 
-                    (executionResult.passedTestsId().size() * 100.0) / codeVersionDetails.tests().size());
+            log.info("  - Completed: {}", executionResult.successful());
+            log.info("  - Total Tests: {}", executionResult.totalTests());
+            log.info("  - Passed Tests: {}", executionResult.passedTests());
+            log.info("  - Failed Tests: {}", executionResult.failedTests());
+            log.info("  - Success Rate: {:.1f}%", executionResult.getSuccessRate());
             log.info("  - Execution Time: {} ms", executionResult.timeTaken());
-            log.info("  - Passed Test IDs: {}", executionResult.passedTestsId());
+            log.info("  - Message: {}", executionResult.message());
+            log.info("  - Approved Test IDs: {}", executionResult.passedTestsId());
+            
+            if (executionResult.hasErrors()) {
+                log.warn("⚠️ Execution encountered errors:");
+                log.warn("  - Error Type: {}", executionResult.errorType());
+                log.warn("  - Error Message: {}", executionResult.errorMessage());
+            }
 
             // Create solution report with approved test IDs
             var approvedTestIds = executionResult.passedTestsId();
@@ -133,17 +141,23 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             log.info("  - Solution Report ID: '{}'", solutionReportId.value());
             
             // Enhanced message with execution details
-            String message = String.format("Solution executed via CodeRunner. %d out of %d tests passed. Execution time: %.2f ms", 
-                                approvedTestIds.size(), codeVersionDetails.tests().size(), executionResult.timeTaken());
+            String message = String.format(
+                "Solution executed via CodeRunner. %s. %d out of %d tests passed (%.1f%%). Execution time: %d ms", 
+                executionResult.message(),
+                executionResult.passedTests(), 
+                executionResult.totalTests(), 
+                executionResult.getSuccessRate(),
+                executionResult.timeTaken()
+            );
             
             log.info("🎯 =============== SUBMIT SOLUTION PROCESS COMPLETED ===============");
             
             return SubmissionResult.success(
                 solutionReportId,
                 approvedTestIds,
-                codeVersionDetails.tests().size(),
+                executionResult.totalTests(),
                 message,
-                String.format("Execution completed in %.2f ms", executionResult.timeTaken()),
+                String.format("Execution completed in %d ms", executionResult.timeTaken()),
                 executionResult.timeTaken()
             );
             

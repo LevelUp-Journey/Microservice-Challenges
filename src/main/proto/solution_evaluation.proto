@@ -3,133 +3,42 @@ syntax = "proto3";
 package com.levelupjourney.coderunner;
 
 option java_multiple_files = true;
-option java_package = "com.levelupjourney.microservicechallenges.solutions.interfaces.grpc";
-option java_outer_classname = "CodeExecutionProto";
+option java_package = "com.levelupjourney.microservicechallenges.coderunner.grpc";
+option java_outer_classname = "SolutionEvaluationProto";
 
-import "google/protobuf/timestamp.proto";
-
-// Service for code execution - communicates with CodeRunner microservice (Go)
-service CodeExecutionService {
-    // Execute solution code and return approved test IDs
-    rpc ExecuteCode (ExecutionRequest) returns (ExecutionResponse);
-    // Get execution status
-    rpc GetExecutionStatus (ExecutionStatusRequest) returns (ExecutionResponse);
-    // Health check
-    rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
-    // Stream execution logs
-    rpc StreamExecutionLogs (StreamLogsRequest) returns (stream LogEntry);
+// Service for solution evaluation - communicates with CodeRunner microservice (Go)
+service SolutionEvaluationService {
+    // Evaluate a solution by executing code with tests
+    rpc EvaluateSolution (EvaluateSolutionRequest) returns (EvaluateSolutionResponse);
 }
 
-// Request for code execution - 100% aligned with CodeRunner implementation
-message ExecutionRequest {
-    string solution_id = 1;        // OBLIGATORIO
-    string challenge_id = 2;       // OBLIGATORIO  
-    string student_id = 3;         // OBLIGATORIO
-    string code = 4;               // OBLIGATORIO - Código de la solución
-    string language = 5;           // OBLIGATORIO - ["cpp", "python", "javascript", "java", "go"]
-    ExecutionConfig config = 6;    // OPCIONAL con valores por defecto
+// Request to evaluate a solution
+message EvaluateSolutionRequest {
+    string challenge_id = 1;           // ID of the challenge
+    string code_version_id = 2;        // ID of the code version
+    string student_id = 3;             // ID of the student
+    string code = 4;                   // Solution code from student
+    repeated TestCase tests = 5;       // Array of tests to evaluate
 }
 
-// Configuration for code execution
-message ExecutionConfig {
-    int32 timeout_seconds = 1;          // Default: 30s
-    int32 memory_limit_mb = 2;          // Default: 512MB
-    bool enable_network = 3;            // Default: false (sin red)
-    map<string, string> environment_variables = 4; // Default: vacío
-    bool debug_mode = 5;                // Default: false
+// Individual test case
+message TestCase {
+    string code_version_test_id = 1;   // Test ID
+    string input = 2;                  // Test input
+    string expected_output = 3;        // Expected output
+    string custom_validation_code = 4; // Custom validation code (empty string if none)
 }
 
-// Response with detailed execution results - 100% compatible
-message ExecutionResponse {
-    repeated string approved_test_ids = 1;  // Lista exacta de tests pasados
-    bool success = 2;                       // Estado final de ejecución
-    string message = 3;                     // Mensaje descriptivo
-    string execution_id = 4;                // ID único de ejecución
-    ExecutionMetadata metadata = 5;         // Métricas completas
-    repeated PipelineStep pipeline_steps = 6; // Información de cada paso
-}
-
-// Detailed execution metadata
-message ExecutionMetadata {
-    google.protobuf.Timestamp started_at = 1;
-    google.protobuf.Timestamp completed_at = 2;
-    int64 execution_time_ms = 3;
-    int32 memory_used_mb = 4;
-    int32 exit_code = 5;
-    CompilationResult compilation = 6;      // Solo para lenguajes compilados
-    repeated TestResult test_results = 7;   // Detalle de CADA test
-}
-
-// Compilation result for compiled languages
-message CompilationResult {
-    bool success = 1;
-    string error_message = 2;
-    repeated string warnings = 3;
-    int64 compilation_time_ms = 4;
-}
-
-// Individual test result
-message TestResult {
-    string test_id = 1;
-    bool passed = 2;
-    string expected_output = 3;
-    string actual_output = 4;
-    string error_message = 5;
-    int64 execution_time_ms = 6;
-}
-
-// Pipeline step information
-message PipelineStep {
-    string name = 1;
-    StepStatus status = 2;
-    google.protobuf.Timestamp started_at = 3;
-    google.protobuf.Timestamp completed_at = 4;
-    string message = 5;
-    string error = 6;
-    map<string, string> step_metadata = 7;
-    int32 step_order = 8;
-}
-
-// Step status enumeration
-enum StepStatus {
-    STEP_STATUS_UNKNOWN = 0;
-    STEP_STATUS_PENDING = 1;
-    STEP_STATUS_RUNNING = 2;
-    STEP_STATUS_COMPLETED = 3;
-    STEP_STATUS_FAILED = 4;
-    STEP_STATUS_SKIPPED = 5;
-}
-
-// Health check request
-message HealthCheckRequest {
-    string service = 1;
-}
-
-// Health check response
-message HealthCheckResponse {
-    enum ServingStatus {
-        UNKNOWN = 0;
-        SERVING = 1;
-        NOT_SERVING = 2;
-    }
-    ServingStatus status = 1;
-}
-
-// Execution status request
-message ExecutionStatusRequest {
-    string execution_id = 1;
-}
-
-// Stream logs request
-message StreamLogsRequest {
-    string execution_id = 1;
-    bool follow = 2;
-}
-
-// Log entry for streaming
-message LogEntry {
-    google.protobuf.Timestamp timestamp = 1;
-    string level = 2;
-    string message = 3;
-    string source = 4;
+// Response from solution evaluation
+message EvaluateSolutionResponse {
+    repeated string approved_tests = 1; // Array of test IDs that passed successfully (ONLY the ones that passed)
+    bool completed = 2;                 // True if execution completed
+    int64 execution_time_ms = 3;        // Execution time in milliseconds
+    int32 total_tests = 4;              // Total number of tests sent
+    int32 passed_tests = 5;             // Number of tests that passed
+    int32 failed_tests = 6;             // Number of tests that failed
+    bool success = 7;                   // True if all tests passed
+    string message = 8;                 // Descriptive message
+    string error_message = 9;           // Error message if any
+    string error_type = 10;             // Error type: "timeout", "compilation_error", "test_failure", etc.
 }

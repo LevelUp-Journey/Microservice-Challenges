@@ -1,6 +1,6 @@
 package com.levelupjourney.microservicechallenges.solutions.interfaces.grpc;
 
-import com.levelupjourney.microservicechallenges.solutions.interfaces.grpc.*;
+import com.levelupjourney.microservicechallenges.coderunner.grpc.*;
 import io.grpc.StatusRuntimeException;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
@@ -17,56 +17,60 @@ import java.util.List;
 public class CodeRunnerGrpcClientService {
 
     @GrpcClient("code-runner")
-    private CodeExecutionServiceGrpc.CodeExecutionServiceBlockingStub codeExecutionStub;
+    private SolutionEvaluationServiceGrpc.SolutionEvaluationServiceBlockingStub evaluationStub;
 
     /**
-     * Execute solution code with test cases using the existing CodeExecutionService
+     * Evaluate solution code with test cases
      */
-    public ExecutionResponse executeSolution(String codeVersionId, String studentId, String language, 
-                                                  String code, List<TestCaseData> tests) {
+    public EvaluateSolutionResponse evaluateSolution(String challengeId, String codeVersionId, String studentId, 
+                                                      String code, List<TestCaseData> tests) {
         try {
             log.info("🚀 Preparing gRPC request to CodeRunner microservice");
             log.info("📤 Request details:");
+            log.info("  - Challenge ID: '{}'", challengeId);
             log.info("  - Code Version ID: '{}'", codeVersionId);
             log.info("  - Student ID: '{}'", studentId);
-            log.info("  - Language: '{}'", language);
             log.info("  - Code length: {} characters", code.length());
             log.info("  - Number of tests: {}", tests.size());
 
-            // Build ExecutionConfig with default values
-            ExecutionConfig config = ExecutionConfig.newBuilder()
-                    .setTimeoutSeconds(30)          // Default: 30s
-                    .setMemoryLimitMb(512)          // Default: 512MB
-                    .setEnableNetwork(false)        // Default: false (sin red)
-                    .setDebugMode(false)            // Default: false
-                    .build();
+            // Build test cases for the request
+            var testCases = tests.stream()
+                    .map(test -> TestCase.newBuilder()
+                            .setCodeVersionTestId(test.codeVersionTestId())
+                            .setInput(test.input())
+                            .setExpectedOutput(test.expectedOutput())
+                            .setCustomValidationCode(test.customValidationCode() != null ? test.customValidationCode() : "")
+                            .build())
+                    .toList();
 
-            // Build ExecutionRequest using the existing proto structure
-            ExecutionRequest request = ExecutionRequest.newBuilder()
-                    .setSolutionId(studentId + "-" + codeVersionId)  // Create a unique solution ID
-                    .setChallengeId(codeVersionId)                   // Use codeVersionId as challengeId
+            // Build EvaluateSolutionRequest
+            EvaluateSolutionRequest request = EvaluateSolutionRequest.newBuilder()
+                    .setChallengeId(challengeId)
+                    .setCodeVersionId(codeVersionId)
                     .setStudentId(studentId)
                     .setCode(code)
-                    .setLanguage(language)
-                    .setConfig(config)
+                    .addAllTests(testCases)
                     .build();
 
             log.info("🔄 Sending gRPC request to CodeRunner service...");
             
-            // Execute gRPC call using the existing CodeExecutionService
-            ExecutionResponse response = codeExecutionStub.executeCode(request);
+            // Execute gRPC call
+            EvaluateSolutionResponse response = evaluationStub.evaluateSolution(request);
             
-            log.info("✅ gRPC ExecutionResponse received:");
+            log.info("✅ gRPC EvaluateSolutionResponse received:");
+            log.info("  - Completed: {}", response.getCompleted());
             log.info("  - Success: {}", response.getSuccess());
-            log.info("  - Approved Tests: {} tests", response.getApprovedTestIdsList().size());
-            log.info("  - Execution ID: '{}'", response.getExecutionId());
+            log.info("  - Total Tests: {}", response.getTotalTests());
+            log.info("  - Passed Tests: {}", response.getPassedTests());
+            log.info("  - Failed Tests: {}", response.getFailedTests());
+            log.info("  - Approved Test IDs: {}", response.getApprovedTestsList());
+            log.info("  - Execution Time: {} ms", response.getExecutionTimeMs());
             log.info("  - Message: '{}'", response.getMessage());
             
-            // Extract timing information from metadata
-            double timeTaken = 0.0;
-            if (response.hasMetadata()) {
-                timeTaken = response.getMetadata().getExecutionTimeMs();
-                log.info("  - Execution Time: {} ms", timeTaken);
+            if (!response.getSuccess()) {
+                log.warn("⚠️ Execution had errors:");
+                log.warn("  - Error Type: '{}'", response.getErrorType());
+                log.warn("  - Error Message: '{}'", response.getErrorMessage());
             }
 
             return response;

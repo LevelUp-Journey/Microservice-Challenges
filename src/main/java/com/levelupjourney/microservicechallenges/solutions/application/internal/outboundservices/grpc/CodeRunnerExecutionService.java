@@ -2,7 +2,7 @@ package com.levelupjourney.microservicechallenges.solutions.application.internal
 
 import com.levelupjourney.microservicechallenges.shared.interfaces.rest.resources.CodeVersionTestForSubmittingResource;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.grpc.CodeRunnerGrpcClientService;
-import com.levelupjourney.microservicechallenges.solutions.interfaces.grpc.ExecutionResponse;
+import com.levelupjourney.microservicechallenges.coderunner.grpc.EvaluateSolutionResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
@@ -27,14 +27,14 @@ public class CodeRunnerExecutionService {
     /**
      * Execute solution code with tests using the CodeRunner microservice
      */
-    public CodeExecutionResult executeSolution(String codeVersionId, String studentId, String language,
+    public CodeExecutionResult executeSolution(String challengeId, String codeVersionId, String studentId,
                                               String code, List<CodeVersionTestForSubmittingResource> tests) {
         try {
             log.info("🎯 Starting code execution process using CodeRunner microservice");
             log.info("📋 Input validation:");
+            log.info("  - Challenge ID: '{}'", challengeId);
             log.info("  - Code Version ID: '{}'", codeVersionId);
             log.info("  - Student ID: '{}'", studentId);
-            log.info("  - Language: '{}'", language);
             log.info("  - Code length: {} characters", code != null ? code.length() : 0);
             log.info("  - Total tests: {}", tests != null ? tests.size() : 0);
 
@@ -49,28 +49,35 @@ public class CodeRunnerExecutionService {
                     .toList();
 
             // Call CodeRunner via gRPC
-            var response = codeRunnerGrpcClient.executeSolution(codeVersionId, studentId, language, code, testCases);
-
-            // Extract execution time from metadata
-            double timeTaken = 0.0;
-            if (response.hasMetadata()) {
-                timeTaken = response.getMetadata().getExecutionTimeMs();
-            }
-
-            // Check if all tests passed
-            boolean allTestsPassed = response.getApprovedTestIdsList().size() == tests.size();
+            var response = codeRunnerGrpcClient.evaluateSolution(challengeId, codeVersionId, studentId, code, testCases);
 
             log.info("🎉 Code execution completed:");
-            log.info("  - Total tests: {}", tests.size());
-            log.info("  - Passed tests: {}", response.getApprovedTestIdsList().size());
-            log.info("  - Success rate: {:.1f}%", (response.getApprovedTestIdsList().size() * 100.0) / tests.size());
-            log.info("  - All tests passed: {}", allTestsPassed);
-            log.info("  - Execution time: {} ms", timeTaken);
+            log.info("  - Completed: {}", response.getCompleted());
+            log.info("  - Success: {}", response.getSuccess());
+            log.info("  - Total tests: {}", response.getTotalTests());
+            log.info("  - Passed tests: {}", response.getPassedTests());
+            log.info("  - Failed tests: {}", response.getFailedTests());
+            log.info("  - Success rate: {:.1f}%", 
+                    response.getTotalTests() > 0 ? (response.getPassedTests() * 100.0) / response.getTotalTests() : 0);
+            log.info("  - Execution time: {} ms", response.getExecutionTimeMs());
+            log.info("  - Message: {}", response.getMessage());
+            
+            if (!response.getSuccess()) {
+                log.warn("⚠️ Execution had errors:");
+                log.warn("  - Error Type: {}", response.getErrorType());
+                log.warn("  - Error Message: {}", response.getErrorMessage());
+            }
 
             return new CodeExecutionResult(
-                    response.getApprovedTestIdsList(),
-                    timeTaken,
-                    allTestsPassed
+                    response.getApprovedTestsList(),
+                    response.getExecutionTimeMs(),
+                    response.getSuccess(),
+                    response.getTotalTests(),
+                    response.getPassedTests(),
+                    response.getFailedTests(),
+                    response.getMessage(),
+                    response.getErrorMessage(),
+                    response.getErrorType()
             );
 
         } catch (Exception e) {
@@ -80,11 +87,38 @@ public class CodeRunnerExecutionService {
     }
 
     /**
-     * Result of code execution
+     * Result of code execution with comprehensive details
      */
     public record CodeExecutionResult(
-            List<String> passedTestsId,
-            double timeTaken,
-            boolean successful
-    ) {}
+            List<String> passedTestsId,    // IDs of tests that passed
+            long timeTaken,                 // Execution time in milliseconds
+            boolean successful,             // True if all tests passed
+            int totalTests,                 // Total number of tests
+            int passedTests,                // Number of tests that passed
+            int failedTests,                // Number of tests that failed
+            String message,                 // Descriptive message
+            String errorMessage,            // Error message if any
+            String errorType                // Error type (timeout, compilation_error, etc.)
+    ) {
+        /**
+         * Check if there are any errors
+         */
+        public boolean hasErrors() {
+            return errorMessage != null && !errorMessage.isEmpty();
+        }
+        
+        /**
+         * Check if execution had partial success (some tests passed, some failed)
+         */
+        public boolean isPartialSuccess() {
+            return passedTests > 0 && passedTests < totalTests;
+        }
+        
+        /**
+         * Calculate success rate as percentage
+         */
+        public double getSuccessRate() {
+            return totalTests > 0 ? (double) passedTests / totalTests * 100 : 0;
+        }
+    }
 }
