@@ -63,6 +63,18 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         this.status = ChallengeStatus.PUBLISHED;
     }
     
+    public boolean canBePublished() {
+        // A challenge can be published if it has at least one CodeVersion
+        // and that CodeVersion has at least 3 tests
+        if (this.versions == null || this.versions.isEmpty()) {
+            return false;
+        }
+        
+        // Check if at least one version has 3 or more tests
+        return this.versions.stream()
+            .anyMatch(version -> version.getTests() != null && version.getTests().size() >= 3);
+    }
+    
     public void validateCanStart() {
         if (this.status != ChallengeStatus.PUBLISHED) {
             throw new IllegalStateException("Challenge must be published before starting");
@@ -83,6 +95,35 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             // Replace all tags
             this.tags.clear();
             this.tags.addAll(tags);
+        }
+    }
+    
+    public void updateDetails(String name, String description, Integer experiencePoints, ChallengeStatus status, List<Tag> tags) {
+        // Update basic details
+        if (name != null && !name.trim().isEmpty()) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (experiencePoints != null && experiencePoints >= 0) {
+            this.experiencePoints = experiencePoints;
+        }
+        if (tags != null) {
+            // Replace all tags
+            this.tags.clear();
+            this.tags.addAll(tags);
+        }
+        
+        // Handle status change with validation
+        if (status != null && status != this.status) {
+            if (status == ChallengeStatus.PUBLISHED) {
+                if (!canBePublished()) {
+                    throw new IllegalStateException(
+                        "Cannot publish challenge: must have at least one code version with at least 3 tests");
+                }
+            }
+            this.status = status;
         }
     }
 

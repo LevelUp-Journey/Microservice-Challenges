@@ -4,7 +4,6 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.aggrega
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.PublishChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AssignTagToChallengeCommand;
@@ -52,22 +51,6 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
     @Override
     @Transactional
-    public ChallengeId handle(PublishChallengeCommand command) {
-        // Find the challenge by ID
-        Challenge challenge = challengeRepository.findById(command.challengeId())
-                .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
-
-        // Use business method to publish the challenge
-        challenge.publish();
-
-        // Save the updated challenge
-        challengeRepository.save(challenge);
-        
-        return challenge.getId();
-    }
-
-    @Override
-    @Transactional
     public void handle(StartChallengeCommand command) {
         // Find the challenge by ID
         Challenge challenge = challengeRepository.findById(command.challengeId())
@@ -102,6 +85,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
             command.name().orElse(null),
             command.description().orElse(null),
             command.experiencePoints().orElse(null),
+            command.status().orElse(null),
             command.tags().orElse(null)
         );
 

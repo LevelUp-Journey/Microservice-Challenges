@@ -97,7 +97,7 @@ public class ChallengeController {
     }
 
     // Get challenges by teacher ID
-    @GetMapping("/teacher/{teacherId}")
+    @GetMapping("/teachers/{teacherId}")
     public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(@PathVariable String teacherId) {
         // Transform path variable to domain query
         var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
@@ -113,50 +113,35 @@ public class ChallengeController {
         return new ResponseEntity<>(challengeResources, HttpStatus.OK);
     }
 
-    // Update an existing challenge
-    @PutMapping("/{challengeId}")
+    // Update an existing challenge (including status changes like publishing)
+    @PatchMapping("/{challengeId}")
     public ResponseEntity<ChallengeResource> updateChallenge(@PathVariable String challengeId,
                                                              @RequestBody UpdateChallengeResource resource) {
-        // Transform resource to domain command
-        var command = UpdateChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, resource);
+        try {
+            // Transform resource to domain command
+            var command = UpdateChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, resource);
 
-        // Execute command through domain service
-        challengeCommandService.handle(command);
+            // Execute command through domain service
+            challengeCommandService.handle(command);
 
-        // Retrieve updated challenge for response
-        var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
-        var challenge = challengeQueryService.handle(query);
+            // Retrieve updated challenge for response
+            var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challenge = challengeQueryService.handle(query);
 
-        // Transform domain entity to response resource
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            // Transform domain entity to response resource
+            if (challenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+                return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (IllegalStateException e) {
+            // Handle validation errors (e.g., publishing without required code versions/tests)
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (IllegalArgumentException e) {
+            // Handle invalid challenge ID or other argument errors
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    // Publish a challenge
-    @PatchMapping("/{challengeId}/publish")
-    public ResponseEntity<ChallengeResource> publishChallenge(@PathVariable String challengeId) {
-        // Transform path variable to domain command
-        var command = PublishChallengeCommandFromResourceAssembler.toCommandFromResource(
-                new PublishChallengeResource(challengeId));
-
-        // Execute command through domain service
-        var updatedChallengeId = challengeCommandService.handle(command);
-
-        // Retrieve published challenge for response
-        var query = new GetChallengeByIdQuery(updatedChallengeId);
-        var challenge = challengeQueryService.handle(query);
-
-        // Transform domain entity to response resource
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.OK);
-        }
-
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     // Start a challenge (for students)
@@ -173,25 +158,6 @@ public class ChallengeController {
         var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command);
 
         return new ResponseEntity<>(responseResource, HttpStatus.OK);
-    }
-
-    // Get all available tags
-    @GetMapping("/tags")
-    @Operation(summary = "Get all tags", description = "Retrieve all available tags in the system")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully retrieved tags")
-    })
-    public ResponseEntity<List<TagResource>> getAllTags() {
-        // Execute query through domain service
-        var query = new GetAllTagsQuery();
-        var tags = tagQueryService.handle(query);
-
-        // Transform domain entities to response resources
-        var tagResources = tags.stream()
-                .map(TagResourceFromEntityAssembler::toResourceFromEntity)
-                .collect(Collectors.toList());
-
-        return new ResponseEntity<>(tagResources, HttpStatus.OK);
     }
 
     // Assign an existing tag to a challenge
