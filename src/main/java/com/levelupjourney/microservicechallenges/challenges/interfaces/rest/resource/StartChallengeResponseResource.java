@@ -3,6 +3,8 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.res
 public record StartChallengeResponseResource(
         String challengeId,
         String codeVersionId,
-        String studentId
+        String studentId,
+        String solutionId,
+        boolean isNewSolution
 ) {
 }

@@ -21,13 +21,15 @@ public class ChallengeStartedPolicy {
     /**
      * Handles the ChallengeStartedEvent by creating a default solution.
      * This ensures that challenges bounded context doesn't directly depend on solutions.
+     * Passes primitive types (String) to ACL to maintain decoupling.
      */
     @EventListener
     public void handleChallengeStarted(ChallengeStartedEvent event) {
+        // Pass primitive types (String) to ACL instead of value objects
         solutionsAcl.createDefaultSolution(
-            event.studentId(),
-            event.challengeId(),
-            event.codeVersionId(),
+            event.studentId().id().toString(),
+            event.challengeId().id().toString(),
+            event.codeVersionId().id().toString(),
             event.defaultCode()
         );
     }

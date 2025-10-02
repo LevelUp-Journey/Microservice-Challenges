@@ -5,6 +5,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.aggrega
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeResult;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AssignTagToChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UnassignTagFromChallengeCommand;
@@ -16,6 +17,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.services.Chal
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.TagQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeRepository;
+import com.levelupjourney.microservicechallenges.solutions.interfaces.acl.SolutionsAcl;
 import jakarta.transaction.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -27,15 +29,18 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
     private final CodeVersionQueryService codeVersionQueryService;
     private final TagQueryService tagQueryService;
     private final ApplicationEventPublisher eventPublisher;
+    private final SolutionsAcl solutionsAcl;
 
     public ChallengeCommandServiceImpl(ChallengeRepository challengeRepository,
                                      CodeVersionQueryService codeVersionQueryService,
                                      TagQueryService tagQueryService,
-                                     ApplicationEventPublisher eventPublisher) {
+                                     ApplicationEventPublisher eventPublisher,
+                                     SolutionsAcl solutionsAcl) {
         this.challengeRepository = challengeRepository;
         this.codeVersionQueryService = codeVersionQueryService;
         this.tagQueryService = tagQueryService;
         this.eventPublisher = eventPublisher;
+        this.solutionsAcl = solutionsAcl;
     }
 
     @Override
@@ -51,7 +56,20 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
     @Override
     @Transactional
-    public void handle(StartChallengeCommand command) {
+    public StartChallengeResult handle(StartChallengeCommand command) {
+        // Check if solution already exists for this student, challenge, and code version
+        // Pass primitive types (String) to ACL to maintain decoupling
+        String existingSolutionId = solutionsAcl.getExistingSolutionId(
+            command.studentId().id().toString(),
+            command.challengeId().id().toString(),
+            command.codeVersionId().id().toString()
+        );
+        
+        // If solution already exists, return it without creating a new one
+        if (existingSolutionId != null) {
+            return new StartChallengeResult(existingSolutionId, false);
+        }
+        
         // Find the challenge by ID
         Challenge challenge = challengeRepository.findById(command.challengeId())
                 .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
@@ -63,7 +81,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
         CodeVersion codeVersion = codeVersionQueryService.handle(new GetCodeVersionByIdQuery(command.codeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Code version not found"));
 
-        // Publish domain event to trigger business policies
+        // Publish domain event to trigger business policies (this will create the solution)
         ChallengeStartedEvent event = new ChallengeStartedEvent(
             command.studentId(),
             command.challengeId(),
@@ -71,6 +89,16 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
             codeVersion.getInitialCode()
         );
         eventPublisher.publishEvent(event);
+        
+        // After event is processed, get the newly created solution ID
+        // Pass primitive types to ACL
+        String newSolutionId = solutionsAcl.getExistingSolutionId(
+            command.studentId().id().toString(),
+            command.challengeId().id().toString(),
+            command.codeVersionId().id().toString()
+        );
+        
+        return new StartChallengeResult(newSolutionId, true);
     }
 
     @Override

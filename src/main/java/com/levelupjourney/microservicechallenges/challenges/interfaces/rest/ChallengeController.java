@@ -31,14 +31,11 @@ public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
-    private final TagQueryService tagQueryService;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
-                               ChallengeQueryService challengeQueryService,
-                               TagQueryService tagQueryService) {
+                               ChallengeQueryService challengeQueryService) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
-        this.tagQueryService = tagQueryService;
     }
 
     // Create a new challenge
@@ -148,16 +145,24 @@ public class ChallengeController {
     @PostMapping("/{challengeId}/start")
     public ResponseEntity<StartChallengeResponseResource> startChallenge(@PathVariable String challengeId,
                                                                         @RequestBody StartChallengeResource resource) {
-        // Transform resource to domain command
-        var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
+        try {
+            // Transform resource to domain command
+            var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
 
-        // Execute command through domain service
-        challengeCommandService.handle(command);
+            // Execute command through domain service (returns existing or new solution)
+            var result = challengeCommandService.handle(command);
 
-        // Transform command data to response resource
-        var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command);
+            // Transform command data and result to response resource
+            var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command, result);
 
-        return new ResponseEntity<>(responseResource, HttpStatus.OK);
+            return new ResponseEntity<>(responseResource, HttpStatus.OK);
+        } catch (IllegalStateException e) {
+            // Handle validation errors (e.g., challenge not published)
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        } catch (IllegalArgumentException e) {
+            // Handle invalid challenge ID or code version ID
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     // Assign an existing tag to a challenge
