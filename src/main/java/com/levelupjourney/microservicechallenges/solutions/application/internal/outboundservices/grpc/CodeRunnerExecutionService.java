@@ -2,7 +2,6 @@ package com.levelupjourney.microservicechallenges.solutions.application.internal
 
 import com.levelupjourney.microservicechallenges.shared.interfaces.rest.resources.CodeVersionTestForSubmittingResource;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.grpc.CodeRunnerGrpcClientService;
-import com.levelupjourney.microservicechallenges.coderunner.grpc.EvaluateSolutionResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
