@@ -3,9 +3,11 @@ spring:
     name: microservice-challenges
 
   datasource:
-    url: jdbc:postgresql://dpg-d2nm9924d50c73b4tdgg-a.oregon-postgres.render.com:5432/challenges_bdnq
-    username: challenges_bdnq_user
-    password: pUNhvX8JI5mP6nbydOAW4ftrB022KfgC
+    hikari:
+      auto-commit: false
+    url: jdbc:postgresql://localhost:5432/challenges_microservice
+    username: admin
+    password: admin
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,3 +19,16 @@ spring:
 
 server:
   port: 8082
+
+# CORRECTED gRPC Configuration - Fixed address format
+grpc:
+  client:
+    code-runner:
+      address: static://localhost:9084
+      negotiation-type: plaintext
+      max-inbound-message-size: 8MB
+
+    code-runner-fallback:
+      address: static://localhost:9084
+      negotiation-type: plaintext
+      max-inbound-message-size: 8MB

@@ -1,0 +1,101 @@
+@startuml Challenge Solution Flow
+
+title Challenge Creation to Solution Flow
+
+start
+
+partition "Teacher Activities" {
+  :Create Challenge
+  (DRAFT status);
+
+  :Add Code Version
+  (Java/Python/etc.);
+
+  :Configure Test Cases
+  (input/output pairs);
+
+  :Publish Challenge
+  (PUBLISHED status);
+}
+
+partition "Platform Activities" {
+  :Challenge available
+  for students;
+}
+
+partition "Student Activities" {
+  :Browse published challenges;
+
+  :Select challenge and language;
+
+  :Start Challenge;
+}
+
+partition "System Activities" {
+  :Validate challenge is PUBLISHED;
+
+  :Create Solution aggregate
+  (NO_TESTED status);
+
+  :Trigger ChallengeStartedEvent;
+}
+
+partition "Student Development" {
+  :Student develops code
+  iteratively;
+
+  :Update solution code
+  (save progress);
+}
+
+partition "Solution Submission" {
+  :Student submits solution
+  for evaluation;
+}
+
+partition "Code Execution" {
+  :Process SubmitSolutionCommand;
+
+  :Increment solution attempts;
+
+  :Call CodeExecutionGrpcService;
+
+  :Send code + language + tests
+  to CodeRunner service;
+
+  :Execute code in Code Runner service;
+
+  :Return execution results
+  (success/failure + metrics);
+}
+
+partition "Report Generation" {
+  :Create SolutionReport
+  with performance metrics;
+
+  :Update Solution status
+  (SUCCESS/FAILED);
+
+  :Store test results
+  (passed/failed tests);
+}
+
+partition "Feedback Loop" {
+  :Student views results;
+
+  :Check SolutionReport
+  (time, memory, passed tests);
+
+  if (All tests passed?) then (yes)
+    :Solution = SUCCESS
+    Challenge completed!;
+  else (no)
+    :Solution = FAILED
+    Student can retry;
+    -> development;
+  endif
+}
+
+stop
+
+@enduml

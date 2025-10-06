@@ -7,6 +7,6 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 public interface CodeVersionTestCommandService {
 
     CodeVersionTestId handle(AddCodeVersionTestCommand command);
+
     void handle(UpdateCodeVersionTestCommand command);
-    
 }

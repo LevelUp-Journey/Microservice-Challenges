@@ -2,6 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.infrastructure.pers
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,24 +13,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CodeVersionRepository extends JpaRepository<CodeVersion, UUID> {
+public interface CodeVersionRepository extends JpaRepository<CodeVersion, CodeVersionId> {
 
-    // Find code version by CodeVersionId (for UpdateCodeVersionCommand)
-    Optional<CodeVersion> findById_Value(UUID codeVersionId);
+    // Find code versions by challenge using clean method name
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId")
+    List<CodeVersion> findByChallengeId(@Param("challengeId") UUID challengeId);
 
-    // Find code versions by challenge (for AddCodeVersionCommand)
-    List<CodeVersion> findByChallengeId_Value(UUID challengeId);
-
-    // Find code version by challenge and language (to check if version already exists)
-    Optional<CodeVersion> findByChallengeId_ValueAndLanguage(UUID challengeId, CodeLanguage language);
+    // Find code version by challenge and language using clean method name
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId AND cv.language = :language")
+    Optional<CodeVersion> findByChallengeIdAndLanguage(@Param("challengeId") UUID challengeId, @Param("language") CodeLanguage language);
 
     // Find all code versions for a specific challenge and language
-    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.value = :challengeId AND cv.language = :language")
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId AND cv.language = :language")
     List<CodeVersion> findByChallengeAndLanguage(@Param("challengeId") UUID challengeId, @Param("language") CodeLanguage language);
 
-    // Check if code version exists by id
-    boolean existsById_Value(UUID codeVersionId);
-
-    // Count code versions for a challenge
-    long countByChallengeId_Value(UUID challengeId);
+    // Count code versions for a challenge using clean method name
+    @Query("SELECT COUNT(cv) FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId")
+    long countByChallengeId(@Param("challengeId") UUID challengeId);
 }

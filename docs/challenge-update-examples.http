@@ -1,0 +1,84 @@
+### Update Challenge Endpoint Examples
+
+# 1. Update challenge name only
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "name": "Updated Challenge Title"
+}
+
+###
+
+# 2. Update challenge description and experience points
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "description": "This is an updated description for the challenge",
+  "experiencePoints": 200
+}
+
+###
+
+# 3. Publish a challenge (change status to PUBLISHED)
+# NOTE: This will only work if the challenge has at least 1 CodeVersion with 3+ tests
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "status": "PUBLISHED"
+}
+
+###
+
+# 4. Update multiple fields including status
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "name": "Advanced JavaScript Challenge",
+  "description": "Master async/await patterns",
+  "experiencePoints": 300,
+  "status": "PUBLISHED"
+}
+
+###
+
+# 5. Change status back to DRAFT
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "status": "DRAFT"
+}
+
+###
+
+# 6. Change status to HIDDEN
+PATCH http://localhost:8080/api/v1/challenges/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "status": "HIDDEN"
+}
+
+###
+
+# Expected Responses:
+
+# Success (200 OK):
+# {
+#   "id": "550e8400-e29b-41d4-a716-446655440000",
+#   "name": "Updated Challenge Title",
+#   "description": "...",
+#   "experiencePoints": 100,
+#   "status": "DRAFT",
+#   ...
+# }
+
+# Validation Error (400 Bad Request) - when trying to publish without requirements:
+# This happens when trying to set status to "PUBLISHED" but the challenge
+# doesn't have at least one CodeVersion with at least 3 tests
+
+# Not Found (404 Not Found) - when challenge ID doesn't exist
