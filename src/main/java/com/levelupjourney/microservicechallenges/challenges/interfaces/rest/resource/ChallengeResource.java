@@ -8,7 +8,9 @@ public record ChallengeResource(
     String name,
     String description,
     Integer experiencePoints,
+    String difficulty,
     String status,
-    List<String> tags
+    List<String> tags,
+    List<StarResource> stars
 ) {
 }

@@ -113,6 +113,7 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
             command.name().orElse(null),
             command.description().orElse(null),
             command.experiencePoints().orElse(null),
+            command.difficulty().orElse(null),
             command.status().orElse(null),
             command.tags().orElse(null)
         );
