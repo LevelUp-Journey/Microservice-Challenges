@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: microservice-challenges
+
+  datasource:
+    hikari:
+      auto-commit: false
+    url: jdbc:postgresql://localhost:5432/challenges_microservice
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: com.levelupjourney.microservicechallenges.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+    open-in-view: true
+
+server:
+  port: 8082
+
+# CORRECTED gRPC Configuration - Fixed address format
+grpc:
+  client:
+    code-runner:
+      address: static://localhost:9084
+      negotiation-type: plaintext
+      max-inbound-message-size: 8MB
+
+    code-runner-fallback:
+      address: static://localhost:9084
+      negotiation-type: plaintext
+      max-inbound-message-size: 8MB

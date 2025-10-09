@@ -1,0 +1,157 @@
+# Archivo de Pruebas para el Flujo Completo de Challenges
+# Este archivo contiene las URLs y JSON bodies para probar la creación completa de un challenge,
+# incluyendo agregar code version, tests, iniciar challenge y submit solution.
+# Usa placeholders como CHALLENGE_ID_ANTERIOR para IDs generados en pasos previos.
+
+# =============================================================================
+# FASE 1: CREACIÓN DEL CHALLENGE
+# =============================================================================
+
+# Crear un nuevo challenge
+POST http://localhost:8082/api/v1/challenges
+Content-Type: application/json
+
+{
+  "teacherId": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Challenge de Fibonacci en C++",
+  "description": "Implementa una función que calcule el número de Fibonacci en una posición dada en C++",
+  "experiencePoints": 100
+}
+
+# Respuesta esperada: Challenge creado con ID (usar este ID en pasos siguientes como CHALLENGE_ID_ANTERIOR)
+
+# =============================================================================
+# FASE 2: AGREGAR CODE VERSION AL CHALLENGE
+# =============================================================================
+
+# Agregar una code version al challenge creado
+POST http://localhost:8082/api/v1/code-versions
+Content-Type: application/json
+
+{
+  "challengeId": "CHALLENGE_ID_ANTERIOR",
+  "language": "C_PLUS_PLUS",
+  "defaultCode": "#include <iostream>\n\nint fibonacci(int position) {\n    // Implementa la lógica aquí\n    return 0;\n}\n\nint main() {\n    int pos;\n    std::cin >> pos;\n    std::cout << fibonacci(pos) << std::endl;\n    return 0;\n}"
+}
+
+# Respuesta esperada: Code version creado con ID (usar este ID en pasos siguientes como CODE_VERSION_ID_ANTERIOR)
+
+# =============================================================================
+# FASE 3: AGREGAR TESTS A LA CODE VERSION
+# =============================================================================
+
+# Agregar primer test
+POST http://localhost:8082/api/v1/code-version-tests
+Content-Type: application/json
+
+{
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR",
+  "input": "4",
+  "expectedOutput": "3",
+  "failureMessage": "El número de Fibonacci en la posición 4 debe ser 3"
+}
+
+# Agregar segundo test
+POST http://localhost:8082/api/v1/code-version-tests
+Content-Type: application/json
+
+{
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR",
+  "input": "10",
+  "expectedOutput": "55",
+  "failureMessage": "El número de Fibonacci en la posición 10 debe ser 55"
+}
+
+# Agregar tercer test
+POST http://localhost:8082/api/v1/code-version-tests
+Content-Type: application/json
+
+{
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR",
+  "input": "15",
+  "expectedOutput": "610",
+  "failureMessage": "El número de Fibonacci en la posición 15 debe ser 610"
+}
+
+# =============================================================================
+# FASE 4: PUBLICAR EL CHALLENGE
+# =============================================================================
+
+# Publicar el challenge para que esté disponible para estudiantes
+PATCH http://localhost:8082/api/v1/challenges/CHALLENGE_ID_ANTERIOR/publish
+
+# Respuesta esperada: Challenge publicado con status "PUBLISHED"
+
+# =============================================================================
+# FASE 5: INICIAR EL CHALLENGE (PARA UN ESTUDIANTE)
+# =============================================================================
+
+# Iniciar el challenge para un estudiante
+POST http://localhost:8082/api/v1/challenges/CHALLENGE_ID_ANTERIOR/start
+Content-Type: application/json
+
+{
+  "challengeId": "CHALLENGE_ID_ANTERIOR",
+  "studentId": "660e8400-e29b-41d4-a716-446655440001",
+  "codeVersionId": "CODE_VERSION_ID_ANTERIOR"
+}
+
+# =============================================================================
+# FASE 6: CREAR UNA SOLUCIÓN
+# =============================================================================
+
+# Nota: La solución por defecto se crea automáticamente cuando se inicia el challenge
+# a través del evento ChallengeStartedEvent y la política ChallengeStartedPolicy.
+# Esta solución contiene el código inicial/base de la code version (plantilla).
+# Si necesitas crear una solución adicional manualmente, usa este endpoint:
+
+# =============================================================================
+# FASE 7: ACTUALIZAR LA SOLUCIÓN CON EL CÓDIGO DEL ESTUDIANTE
+# =============================================================================
+
+# Actualizar la solución por defecto con el código real del estudiante
+# Primero, obtener el ID de la solution creada automáticamente
+# GET http://localhost:8082/api/v1/solutions?studentId=660e8400-e29b-41d4-a716-446655440001&challengeId=CHALLENGE_ID_ANTERIOR&codeVersionId=CODE_VERSION_ID_ANTERIOR
+
+# Actualizar la solución con el código del estudiante
+# Reemplaza SOLUTION_ID_ANTERIOR con el ID obtenido del GET anterior
+PUT http://localhost:8082/api/v1/solutions/SOLUTION_ID_ANTERIOR
+Content-Type: application/json
+
+{
+  "code": "#include <iostream>\n\nint fibonacci(int position) {\n    if (position == 0) return 0;\n    if (position == 1) return 1;\n    int a = 0, b = 1;\n    for (int i = 2; i <= position; ++i) {\n        int temp = a + b;\n        a = b;\n        b = temp;\n    }\n    return b;\n}\n\nint main() {\n    int pos;\n    std::cin >> pos;\n    std::cout << fibonacci(pos) << std::endl;\n    return 0;\n}",
+  "language": "C_PLUS_PLUS"
+}
+
+# Respuesta esperada: Solution actualizada con el código del estudiante
+
+# =============================================================================
+# FASE 8: SUBMIT DE LA SOLUCIÓN PARA EVALUACIÓN
+# =============================================================================
+
+# Primero, obtener el ID de la solution creada automáticamente (para referencia)
+# GET http://localhost:8082/api/v1/solutions?studentId=660e8400-e29b-41d4-a716-446655440001&challengeId=CHALLENGE_ID_ANTERIOR&codeVersionId=CODE_VERSION_ID_ANTERIOR
+
+# Enviar la solución actualizada para evaluación (esto activará el gRPC al CodeRunner)
+# Usa el mismo SOLUTION_ID_ANTERIOR que usaste para actualizar la solución en la Fase 7
+POST http://localhost:8082/api/v1/solutions/SOLUTION_ID_ANTERIOR/submit
+Content-Type: application/json
+
+{
+  "code": "#include <iostream>\n\nint fibonacci(int position) {\n    if (position == 0) return 0;\n    if (position == 1) return 1;\n    int a = 0, b = 1;\n    for (int i = 2; i <= position; ++i) {\n        int temp = a + b;\n        a = b;\n        b = temp;\n    }\n    return b;\n}\n\nint main() {\n    int pos;\n    std::cin >> pos;\n    std::cout << fibonacci(pos) << std::endl;\n    return 0;\n}",
+  "studentId": "660e8400-e29b-41d4-a716-446655440001"
+}
+
+# =============================================================================
+# NOTAS IMPORTANTES
+# =============================================================================
+# 1. Reemplaza CHALLENGE_ID_ANTERIOR con el ID real del challenge creado
+# 2. Reemplaza CODE_VERSION_ID_ANTERIOR con el ID real de la code version
+# 3. Reemplaza SOLUTION_ID_ANTERIOR con el ID real de la solution (obtenido del GET)
+# 4. Asegúrate de que el microservicio CodeRunner esté corriendo en localhost:8084
+# 5. Los UUIDs de ejemplo pueden ser reemplazados por valores reales
+# 6. El código de ejemplo es para C++, pero puede adaptarse a otros lenguajes
+# 7. La solución por defecto creada al iniciar el challenge contiene código base/plantilla
+# 8. DEBES actualizar la solución con el código real del estudiante ANTES del submit
+# 9. customValidationCode es opcional; solo se usa cuando el teacher desea un test personalizado con doctest
+# 10. En el code runner, se prepara el entorno de ejecución (ej. doctest para C++) y se ejecutan los tests comparando input/expectedOutput

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package com.levelupjourney.coderunner;
+
+option java_multiple_files = true;
+option java_package = "com.levelupjourney.microservicechallenges.coderunner.grpc";
+option java_outer_classname = "SolutionEvaluationProto";
+
+// Service for solution evaluation - communicates with CodeRunner microservice (Go)
+service SolutionEvaluationService {
+    // Evaluate a solution by executing code with tests
+    rpc EvaluateSolution (EvaluateSolutionRequest) returns (EvaluateSolutionResponse);
+}
+
+// Request to evaluate a solution
+message EvaluateSolutionRequest {
+    string challenge_id = 1;           // ID of the challenge
+    string code_version_id = 2;        // ID of the code version
+    string student_id = 3;             // ID of the student
+    string code = 4;                   // Solution code from student
+    repeated TestCase tests = 5;       // Array of tests to evaluate
+}
+
+// Individual test case
+message TestCase {
+    string code_version_test_id = 1;   // Test ID
+    string input = 2;                  // Test input
+    string expected_output = 3;        // Expected output
+    string custom_validation_code = 4; // Custom validation code (empty string if none)
+}
+
+// Response from solution evaluation
+message EvaluateSolutionResponse {
+    repeated string approved_tests = 1; // Array of test IDs that passed successfully (ONLY the ones that passed)
+    bool completed = 2;                 // True if execution completed
+    int64 execution_time_ms = 3;        // Execution time in milliseconds
+    int32 total_tests = 4;              // Total number of tests sent
+    int32 passed_tests = 5;             // Number of tests that passed
+    int32 failed_tests = 6;             // Number of tests that failed
+    bool success = 7;                   // True if all tests passed
+    string message = 8;                 // Descriptive message
+    string error_message = 9;           // Error message if any
+    string error_type = 10;             // Error type: "timeout", "compilation_error", "test_failure", etc.
+}
