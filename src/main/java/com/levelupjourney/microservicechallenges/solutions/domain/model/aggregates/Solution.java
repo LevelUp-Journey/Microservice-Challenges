@@ -32,16 +32,29 @@ public class Solution extends AuditableAbstractAggregateRoot<Solution> {
     @Embedded
     private SolutionDetails details;
 
+    @Embedded
+    private SolutionScore score;
+
     public Solution(CreateSolutionCommand command) {
         this.id = new SolutionId(UUID.randomUUID());
         this.challengeId = command.challengeId();
         this.codeVersionId = command.codeVersionId();
         this.studentId = command.studentId();
         this.details = new SolutionDetails(command.code());
+        this.score = SolutionScore.defaultScore();
     }
     
     public void updateSolution(String code, String language) {
         // Update solution details with new code and language
         this.details = new SolutionDetails(code);
+    }
+
+    /**
+     * Assign score to this solution based on test results
+     * @param pointsEarned Points earned from passed tests
+     * @param maxPoints Maximum possible points from the challenge
+     */
+    public void assignScore(Integer pointsEarned, Integer maxPoints) {
+        this.score = new SolutionScore(pointsEarned, maxPoints);
     }
 }

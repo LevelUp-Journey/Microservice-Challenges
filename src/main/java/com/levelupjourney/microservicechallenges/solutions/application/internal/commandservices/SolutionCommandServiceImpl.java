@@ -1,11 +1,13 @@
 package com.levelupjourney.microservicechallenges.solutions.application.internal.commandservices;
 
+import com.levelupjourney.microservicechallenges.shared.infrastructure.messaging.kafka.KafkaProducerService;
 import com.levelupjourney.microservicechallenges.solutions.application.internal.outboundservices.acl.ExternalChallengesService;
 import com.levelupjourney.microservicechallenges.solutions.application.internal.outboundservices.grpc.CodeRunnerExecutionService;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.aggregates.Solution;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.commands.CreateSolutionCommand;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.commands.SubmitSolutionCommand;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.commands.UpdateSolutionCommand;
+import com.levelupjourney.microservicechallenges.solutions.domain.model.events.ChallengeCompletedEvent;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByIdQuery;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionReportId;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SubmissionResult;
@@ -16,6 +18,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,15 +29,18 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
     private final SolutionQueryService solutionQueryService;
     private final SolutionRepository solutionRepository;
     private final CodeRunnerExecutionService codeRunnerExecutionService;
+    private final KafkaProducerService kafkaProducerService;
 
-    public SolutionCommandServiceImpl(ExternalChallengesService externalChallengesService, 
+    public SolutionCommandServiceImpl(ExternalChallengesService externalChallengesService,
                                     SolutionQueryService solutionQueryService,
                                     SolutionRepository solutionRepository,
-                                    CodeRunnerExecutionService codeRunnerExecutionService) {
+                                    CodeRunnerExecutionService codeRunnerExecutionService,
+                                    KafkaProducerService kafkaProducerService) {
         this.externalChallengesService = externalChallengesService;
         this.solutionQueryService = solutionQueryService;
         this.solutionRepository = solutionRepository;
         this.codeRunnerExecutionService = codeRunnerExecutionService;
+        this.kafkaProducerService = kafkaProducerService;
     }
 
     @Override
@@ -136,28 +142,80 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             log.info("✅ Solution executed via CodeRunner!");
             log.info("📋 Creating solution report...");
             
+            // Get challenge details to calculate score
+            log.info("📋 Step 5: Fetching challenge details for score calculation...");
+            var challenge = externalChallengesService.getChallengeForScoring(
+                existingSolution.getChallengeId().id().toString()
+            );
+
+            log.info("✅ Challenge details retrieved:");
+            log.info("  - Challenge ID: '{}'", challenge.challengeId());
+            log.info("  - Max Experience Points: {}", challenge.experiencePoints());
+
+            // Calculate score based on test results
+            int pointsEarned = calculateScore(
+                challenge.experiencePoints(),
+                executionResult.passedTests(),
+                executionResult.totalTests(),
+                executionResult.successful()
+            );
+
+            log.info("💯 Score calculated:");
+            log.info("  - Points Earned: {}/{}", pointsEarned, challenge.experiencePoints());
+            log.info("  - Success Rate: {:.1f}%", executionResult.getSuccessRate());
+
+            // Assign score to solution
+            existingSolution.assignScore(pointsEarned, challenge.experiencePoints());
+            solutionRepository.save(existingSolution);
+            log.info("✅ Score saved to solution");
+
+            // Publish event to Kafka if student earned points
+            if (pointsEarned > 0) {
+                log.info("📤 Publishing ChallengeCompletedEvent to Kafka...");
+                var event = new ChallengeCompletedEvent(
+                    command.studentId().id().toString(),
+                    existingSolution.getChallengeId().id().toString(),
+                    existingSolution.getId().id().toString(),
+                    pointsEarned,
+                    challenge.experiencePoints(),
+                    executionResult.passedTests(),
+                    executionResult.totalTests(),
+                    executionResult.successful(),
+                    executionResult.timeTaken(),
+                    LocalDateTime.now()
+                );
+
+                kafkaProducerService.publishChallengeCompleted(event);
+                log.info("✅ Event published successfully");
+            } else {
+                log.info("⚠️ No points earned, event not published");
+            }
+
             // TODO: Create actual SolutionReport entity with approved test IDs and execution metadata
             var solutionReportId = new SolutionReportId(UUID.randomUUID());
             log.info("  - Solution Report ID: '{}'", solutionReportId.value());
-            
-            // Enhanced message with execution details
+
+            // Enhanced message with execution details and score
             String message = String.format(
-                "Solution executed via CodeRunner. %s. %d out of %d tests passed (%.1f%%). Execution time: %d ms", 
+                "Solution executed via CodeRunner. %s. %d out of %d tests passed (%.1f%%). Score: %d/%d points. Execution time: %d ms",
                 executionResult.message(),
-                executionResult.passedTests(), 
-                executionResult.totalTests(), 
+                executionResult.passedTests(),
+                executionResult.totalTests(),
                 executionResult.getSuccessRate(),
+                pointsEarned,
+                challenge.experiencePoints(),
                 executionResult.timeTaken()
             );
-            
+
             log.info("🎯 =============== SUBMIT SOLUTION PROCESS COMPLETED ===============");
-            
+
             return SubmissionResult.success(
                 solutionReportId,
                 approvedTestIds,
                 executionResult.totalTests(),
                 message,
-                String.format("Execution completed in %d ms", executionResult.timeTaken()),
+                String.format("Execution completed in %d ms. Score: %d/%d points",
+                    executionResult.timeTaken(), pointsEarned, challenge.experiencePoints()),
                 executionResult.timeTaken()
             );
             
@@ -182,5 +240,37 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         var existingSolution = solution.get();
         existingSolution.updateSolution(command.code(), command.language());
         solutionRepository.save(existingSolution);
+    }
+
+    /**
+     * Calculate the score earned based on test results.
+     * Strategy: Only award full points if ALL tests pass. Otherwise, award proportional points.
+     *
+     * @param maxPoints Maximum points available for the challenge
+     * @param passedTests Number of tests that passed
+     * @param totalTests Total number of tests
+     * @param allPassed Whether all tests passed
+     * @return Points earned (0 to maxPoints)
+     */
+    private int calculateScore(Integer maxPoints, int passedTests, int totalTests, boolean allPassed) {
+        if (maxPoints == null || maxPoints == 0) {
+            return 0;
+        }
+
+        if (totalTests == 0) {
+            return 0;
+        }
+
+        // Strategy 1: Full points only if all tests pass (recommended for competitive environment)
+        if (allPassed) {
+            return maxPoints;
+        }
+
+        // Strategy 2: Proportional scoring (award partial credit)
+        // Uncomment this if you want to award proportional points even when not all tests pass
+        // return (maxPoints * passedTests) / totalTests;
+
+        // Default: No points if not all tests pass
+        return 0;
     }
 }
