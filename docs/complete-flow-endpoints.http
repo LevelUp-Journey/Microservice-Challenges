@@ -1,0 +1,328 @@
+# ===============================================================================
+# GUÍA COMPLETA DE ENDPOINTS PARA PROBAR EL FLUJO END-TO-END
+# ===============================================================================
+# Este archivo contiene todos los endpoints necesarios para probar el flujo completo:
+# 1. Crear Challenge
+# 2. Agregar Code Version
+# 3. Agregar Tests
+# 4. Publicar Challenge
+# 5. Crear Solution (estudiante)
+# 6. Submit Solution → CodeRunner → Kafka → Profile Service
+#
+# IMPORTANTE: Reemplaza los IDs generados en cada paso en los pasos siguientes
+# ===============================================================================
+
+### Variables (Actualiza estos valores con los IDs reales generados)
+@baseUrl = http://localhost:8082
+@teacherId = 550e8400-e29b-41d4-a716-446655440000
+@studentId = 660e8400-e29b-41d4-a716-446655440001
+@challengeId = REEMPLAZAR_CON_ID_GENERADO
+@codeVersionId = REEMPLAZAR_CON_ID_GENERADO
+@solutionId = REEMPLAZAR_CON_ID_GENERADO
+
+# ===============================================================================
+# PASO 1: CREAR UN NUEVO CHALLENGE
+# ===============================================================================
+# Endpoint: POST /api/v1/challenges
+# Descripción: Crea un nuevo challenge con puntos de experiencia
+
+### 1. Crear Challenge
+POST {{baseUrl}}/api/v1/challenges
+Content-Type: application/json
+
+{
+  "teacherId": "{{teacherId}}",
+  "name": "Suma de Dos Números",
+  "description": "Implementa una función que sume dos números enteros",
+  "experiencePoints": 50,
+  "difficulty": "EASY"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 201 Created
+# Body: { "id": "uuid-del-challenge", ... }
+#
+# ⚠️ COPIAR EL "id" GENERADO Y REEMPLAZAR @challengeId arriba
+
+# ===============================================================================
+# PASO 2: AGREGAR CODE VERSION AL CHALLENGE
+# ===============================================================================
+# Endpoint: POST /api/v1/challenges/{challengeId}/code-versions
+# Descripción: Agrega una versión de código (lenguaje + plantilla inicial)
+
+### 2. Agregar Code Version
+POST {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions
+Content-Type: application/json
+
+{
+  "language": "PYTHON",
+  "defaultCode": "def sum_two_numbers(a, b):\n    # Tu código aquí\n    pass\n\nif __name__ == '__main__':\n    a = int(input())\n    b = int(input())\n    print(sum_two_numbers(a, b))"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 201 Created
+# Body: { "id": "uuid-del-code-version", ... }
+#
+# ⚠️ COPIAR EL "id" GENERADO Y REEMPLAZAR @codeVersionId arriba
+
+# ===============================================================================
+# PASO 3: AGREGAR TESTS A LA CODE VERSION
+# ===============================================================================
+# Endpoint: POST /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/tests
+# Descripción: Agrega tests que validarán la solución del estudiante
+
+### 3.1. Agregar Test 1
+POST {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/tests
+Content-Type: application/json
+
+{
+  "input": "2\n3",
+  "expectedOutput": "5",
+  "failureMessage": "La suma de 2 + 3 debe ser 5"
+}
+
+### 3.2. Agregar Test 2
+POST {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/tests
+Content-Type: application/json
+
+{
+  "input": "10\n20",
+  "expectedOutput": "30",
+  "failureMessage": "La suma de 10 + 20 debe ser 30"
+}
+
+### 3.3. Agregar Test 3
+POST {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/tests
+Content-Type: application/json
+
+{
+  "input": "-5\n5",
+  "expectedOutput": "0",
+  "failureMessage": "La suma de -5 + 5 debe ser 0"
+}
+
+### 3.4. Agregar Test 4
+POST {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/tests
+Content-Type: application/json
+
+{
+  "input": "100\n200",
+  "expectedOutput": "300",
+  "failureMessage": "La suma de 100 + 200 debe ser 300"
+}
+
+# RESPUESTA ESPERADA (para cada test):
+# Status: 201 Created
+# Body: { "id": "uuid-del-test", "input": "...", "expectedOutput": "..." }
+
+# ===============================================================================
+# PASO 4: PUBLICAR EL CHALLENGE
+# ===============================================================================
+# Endpoint: PATCH /api/v1/challenges/{challengeId}
+# Descripción: Cambia el estado del challenge a PUBLISHED para que esté disponible
+
+### 4. Publicar Challenge
+PATCH {{baseUrl}}/api/v1/challenges/{{challengeId}}
+Content-Type: application/json
+
+{
+  "status": "PUBLISHED"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 200 OK
+# Body: { "id": "...", "status": "PUBLISHED", ... }
+
+# ===============================================================================
+# PASO 5: VERIFICAR CHALLENGE PUBLICADO
+# ===============================================================================
+# Endpoint: GET /api/v1/challenges
+# Descripción: Obtiene todos los challenges publicados
+
+### 5. Listar Challenges Publicados
+GET {{baseUrl}}/api/v1/challenges
+
+# ===============================================================================
+# PASO 6: OBTENER DETALLES DEL CHALLENGE
+# ===============================================================================
+# Endpoint: GET /api/v1/challenges/{challengeId}
+# Descripción: Obtiene los detalles completos del challenge
+
+### 6. Obtener Challenge por ID
+GET {{baseUrl}}/api/v1/challenges/{{challengeId}}
+
+# ===============================================================================
+# PASO 7: CREAR UNA SOLUCIÓN (ESTUDIANTE)
+# ===============================================================================
+# Endpoint: POST /api/v1/solutions
+# Descripción: El estudiante crea una solución inicial para el challenge
+
+### 7. Crear Solution
+POST {{baseUrl}}/api/v1/solutions
+Content-Type: application/json
+
+{
+  "challengeId": "{{challengeId}}",
+  "codeVersionId": "{{codeVersionId}}",
+  "studentId": "{{studentId}}",
+  "code": "def sum_two_numbers(a, b):\n    # Tu código aquí\n    pass\n\nif __name__ == '__main__':\n    a = int(input())\n    b = int(input())\n    print(sum_two_numbers(a, b))"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 201 Created
+# Body: { "id": "uuid-de-la-solution", ... }
+#
+# ⚠️ COPIAR EL "id" GENERADO Y REEMPLAZAR @solutionId arriba
+
+# ===============================================================================
+# PASO 8: ACTUALIZAR LA SOLUCIÓN CON CÓDIGO DEL ESTUDIANTE
+# ===============================================================================
+# Endpoint: PUT /api/v1/solutions/{solutionId}
+# Descripción: El estudiante actualiza su código antes de hacer submit
+
+### 8. Actualizar Solution
+PUT {{baseUrl}}/api/v1/solutions/{{solutionId}}
+Content-Type: application/json
+
+{
+  "code": "def sum_two_numbers(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    a = int(input())\n    b = int(input())\n    print(sum_two_numbers(a, b))",
+  "language": "PYTHON"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 200 OK
+# Body: { "id": "...", "code": "...", ... }
+
+# ===============================================================================
+# PASO 9: SUBMIT DE LA SOLUCIÓN PARA EVALUACIÓN
+# ===============================================================================
+# Endpoint: POST /api/v1/solutions/{solutionId}/submit
+# Descripción: Envía la solución para evaluación
+#
+# ⭐ ESTE ES EL ENDPOINT CLAVE QUE:
+# 1. Envía el código al CodeRunner (gRPC)
+# 2. Ejecuta los tests
+# 3. Calcula los puntos ganados
+# 4. Publica evento a Kafka → Profile Service
+#
+# FLUJO INTERNO:
+# SolutionController → SolutionCommandServiceImpl.handle(SubmitSolutionCommand)
+# → CodeRunnerExecutionService (gRPC)
+# → Calcula puntos (línea 156-161 de SolutionCommandServiceImpl)
+# → Publica ChallengeCompletedEvent a Kafka (línea 173-192)
+# → Profile Service consume el evento y actualiza el score del estudiante
+
+### 9. Submit Solution
+POST {{baseUrl}}/api/v1/solutions/{{solutionId}}/submit
+Content-Type: application/json
+
+{
+  "studentId": "{{studentId}}",
+  "code": "def sum_two_numbers(a, b):\n    return a + b\n\nif __name__ == '__main__':\n    a = int(input())\n    b = int(input())\n    print(sum_two_numbers(a, b))"
+}
+
+# RESPUESTA ESPERADA:
+# Status: 200 OK
+# Body: {
+#   "solutionReportId": "uuid",
+#   "message": "Solution executed via CodeRunner. All tests passed. 4 out of 4 tests passed (100.0%). Score: 50/50 points. Execution time: 123 ms",
+#   "success": true,
+#   "approvedTestIds": ["test-id-1", "test-id-2", "test-id-3", "test-id-4"],
+#   "totalTests": 4,
+#   "passedTests": 4,
+#   "executionDetails": "Execution completed in 123 ms. Score: 50/50 points",
+#   "timeTaken": 123.0
+# }
+
+# 📤 EVENTO KAFKA PUBLICADO (si pointsEarned > 0):
+# Tópico: challenge-completed (configurado en application.properties)
+# Payload:
+# {
+#   "studentId": "660e8400-e29b-41d4-a716-446655440001",
+#   "challengeId": "uuid-del-challenge",
+#   "solutionId": "uuid-de-la-solution",
+#   "experiencePointsEarned": 50,  ← PUNTOS GANADOS
+#   "totalExperiencePoints": 50,   ← PUNTOS MÁXIMOS
+#   "passedTests": 4,
+#   "totalTests": 4,
+#   "allTestsPassed": true,
+#   "executionTimeMs": 123,
+#   "completedAt": "2025-10-18T10:30:00",
+#   "occurredOn": "2025-10-18T10:30:00"
+# }
+
+# ===============================================================================
+# PASO 10: CONSULTAR LA SOLUCIÓN ACTUALIZADA
+# ===============================================================================
+# Endpoint: GET /api/v1/solutions/{solutionId}
+# Descripción: Verifica que la solución tiene el score asignado
+
+### 10. Obtener Solution con Score
+GET {{baseUrl}}/api/v1/solutions/{{solutionId}}
+
+# RESPUESTA ESPERADA:
+# Status: 200 OK
+# Body: {
+#   "id": "uuid",
+#   "challengeId": "uuid",
+#   "codeVersionId": "uuid",
+#   "studentId": "uuid",
+#   "attempts": 1,
+#   "code": "...",
+#   "lastAttemptAt": "2025-10-18T10:30:00",
+#   "status": "SUBMITTED",
+#   "pointsEarned": 50,  ← PUNTOS GANADOS
+#   "maxPoints": 50,     ← PUNTOS MÁXIMOS
+#   "successPercentage": 100.0
+# }
+
+# ===============================================================================
+# ENDPOINTS ADICIONALES ÚTILES
+# ===============================================================================
+
+### Obtener Solution por Student y CodeVersion
+GET {{baseUrl}}/api/v1/solutions/students/{{studentId}}/code-versions/{{codeVersionId}}
+
+### Obtener Solution por Challenge, CodeVersion y Student
+GET {{baseUrl}}/api/v1/solutions/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/students/{{studentId}}
+
+### Listar Code Versions de un Challenge
+GET {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions
+
+### Listar Tests de una Code Version
+GET {{baseUrl}}/api/v1/challenges/{{challengeId}}/code-versions/{{codeVersionId}}/tests
+
+### Obtener Challenge por Teacher ID
+GET {{baseUrl}}/api/v1/challenges/teachers/{{teacherId}}
+
+# ===============================================================================
+# NOTAS IMPORTANTES
+# ===============================================================================
+#
+# 1. ESTRATEGIA DE PUNTUACIÓN:
+#    - Solo se otorgan puntos si TODOS los tests pasan (all-or-nothing)
+#    - Ver SolutionCommandServiceImpl.calculateScore() líneas 255-275
+#    - Si quieres puntos proporcionales, descomenta la línea 271
+#
+# 2. EVENTO KAFKA:
+#    - Solo se publica si pointsEarned > 0
+#    - Ver SolutionCommandServiceImpl líneas 173-192
+#    - Topic configurado en: kafka.topics.challenge-completed
+#
+# 3. PREREQUISITOS:
+#    - CodeRunner microservice debe estar corriendo (gRPC)
+#    - Kafka debe estar corriendo
+#    - Profile Service debe estar escuchando el tópico Kafka
+#
+# 4. VERIFICACIÓN DEL FLUJO:
+#    - Revisa los logs del microservicio Challenges (búsca los emojis 🎯 📤 ✅)
+#    - Verifica que Kafka recibió el evento
+#    - Verifica que Profile Service actualizó el score del estudiante
+#
+# 5. ARCHIVO DE CÓDIGO FUENTE:
+#    - Controlador: src/main/java/.../solutions/interfaces/rest/SolutionController.java:121-163
+#    - Servicio: src/main/java/.../solutions/application/internal/commandservices/SolutionCommandServiceImpl.java:54-227
+#    - Evento: src/main/java/.../solutions/domain/model/events/ChallengeCompletedEvent.java
+#    - Kafka: src/main/java/.../shared/infrastructure/messaging/kafka/KafkaProducerService.java:37-62
+#
+# ===============================================================================
