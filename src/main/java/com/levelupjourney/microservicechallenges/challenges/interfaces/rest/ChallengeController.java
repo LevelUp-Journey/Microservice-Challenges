@@ -1,14 +1,12 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllTagsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
-import com.levelupjourney.microservicechallenges.challenges.domain.services.TagQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -93,7 +91,7 @@ public class ChallengeController {
         return new ResponseEntity<>(challengeResources, HttpStatus.OK);
     }
 
-    // Get challenges by teacher ID
+    // Get challenges by teacher ID (derived collection)
     @GetMapping("/teachers/{teacherId}")
     public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(@PathVariable String teacherId) {
         // Transform path variable to domain query
@@ -137,52 +135,6 @@ public class ChallengeController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (IllegalArgumentException e) {
             // Handle invalid challenge ID or other argument errors
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Start a challenge (for students)
-    @PostMapping("/{challengeId}/start")
-    public ResponseEntity<StartChallengeResponseResource> startChallenge(@PathVariable String challengeId,
-                                                                        @RequestBody StartChallengeResource resource) {
-        try {
-            // Transform resource to domain command
-            var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
-
-            // Execute command through domain service (returns existing or new solution)
-            var result = challengeCommandService.handle(command);
-
-            // Transform command data and result to response resource
-            var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command, result);
-
-            return new ResponseEntity<>(responseResource, HttpStatus.OK);
-        } catch (IllegalStateException e) {
-            // Handle validation errors (e.g., challenge not published)
-            return new ResponseEntity<>(HttpStatus.CONFLICT);
-        } catch (IllegalArgumentException e) {
-            // Handle invalid challenge ID or code version ID
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Assign an existing tag to a challenge
-    @PostMapping("/{challengeId}/tags/{tagId}")
-    @Operation(summary = "Assign tag to challenge", description = "Assign an existing tag to a specific challenge")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Tag successfully assigned to challenge"),
-        @ApiResponse(responseCode = "404", description = "Challenge or tag not found")
-    })
-    public ResponseEntity<Void> assignTagToChallenge(@PathVariable String challengeId,
-                                                    @PathVariable String tagId) {
-        try {
-            // Transform path variables to domain command
-            var command = AssignTagToChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, tagId);
-
-            // Execute command through domain service
-            challengeCommandService.handle(command);
-
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }

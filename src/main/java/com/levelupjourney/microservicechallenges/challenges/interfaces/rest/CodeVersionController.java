@@ -23,7 +23,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(value = "/api/v1/code-versions", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/v1/challenges/{challengeId}/code-versions", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Code Versions", description = "Endpoints for managing code versions of challenges")
 public class CodeVersionController {
 
@@ -36,11 +36,13 @@ public class CodeVersionController {
         this.codeVersionQueryService = codeVersionQueryService;
     }
 
-    // Add new code version to a challenge
+    // Create a new code version for a challenge
     @PostMapping
-    public ResponseEntity<CodeVersionResource> addCodeVersion(@RequestBody AddCodeVersionResource resource) {
-        // Transform resource to domain command
-        var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<CodeVersionResource> createCodeVersion(@PathVariable String challengeId,
+                                                                 @RequestBody AddCodeVersionResource resource) {
+        // Transform resource to domain command with challengeId from path (overriding path parameter)
+        var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode());
+        var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resourceWithChallenge);
         
         // Execute command through domain service
         var codeVersionId = codeVersionCommandService.handle(command);
@@ -60,8 +62,9 @@ public class CodeVersionController {
 
     // Get code version by ID
     @GetMapping("/{codeVersionId}")
-    public ResponseEntity<CodeVersionResource> getCodeVersionById(@PathVariable String codeVersionId) {
-        // Transform path variable to domain query
+    public ResponseEntity<CodeVersionResource> getCodeVersionById(@PathVariable String challengeId,
+                                                                  @PathVariable String codeVersionId) {
+        // Transform path variables to domain query
         var query = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
         
         // Execute query through domain service
@@ -77,7 +80,7 @@ public class CodeVersionController {
     }
 
     // Get all code versions for a challenge
-    @GetMapping("/challenge/{challengeId}")
+    @GetMapping
     public ResponseEntity<List<CodeVersionResource>> getCodeVersionsByChallenge(@PathVariable String challengeId) {
         // Transform path variable to domain query
         var query = new GetCodeVersionsByChallengeIdQuery(new ChallengeId(UUID.fromString(challengeId)));
@@ -95,7 +98,8 @@ public class CodeVersionController {
 
     // Update code version content
     @PutMapping("/{codeVersionId}")
-    public ResponseEntity<CodeVersionResource> updateCodeVersion(@PathVariable String codeVersionId,
+    public ResponseEntity<CodeVersionResource> updateCodeVersion(@PathVariable String challengeId,
+                                                               @PathVariable String codeVersionId,
                                                                @RequestBody UpdateCodeVersionResource resource) {
         // Transform resource to domain command
         var command = UpdateCodeVersionCommandFromResourceAssembler.toCommandFromResource(codeVersionId, resource);
