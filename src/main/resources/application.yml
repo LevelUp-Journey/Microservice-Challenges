@@ -6,7 +6,7 @@ spring:
     hikari:
       auto-commit: false
     url: jdbc:postgresql://localhost:5432/challenges_microservice
-    username: admin
+    username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
 
@@ -18,7 +18,18 @@ spring:
     open-in-view: true
 
 server:
-  port: 8082
+  port: 8083
+
+# Kafka Configuration
+kafka:
+  bootstrap-servers: localhost:9092
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    properties:
+      spring.json.add.type.headers: false
+  topics:
+    challenge-completed: challenge.completed
 
 # CORRECTED gRPC Configuration - Fixed address format
 grpc:
