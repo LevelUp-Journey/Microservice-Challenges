@@ -21,7 +21,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(value = "/api/v1/code-version-tests", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Code Version Tests", description = "Endpoints for managing tests associated with code versions")
 public class CodeVersionTestController {
 
@@ -34,11 +34,17 @@ public class CodeVersionTestController {
         this.codeVersionTestQueryService = codeVersionTestQueryService;
     }
 
-    // Add new test to a code version
+    // Create a new test for a code version
     @PostMapping
-    public ResponseEntity<CodeVersionTestResource> addCodeVersionTest(@RequestBody AddCodeVersionTestResource resource) {
-        // Transform resource to domain command
-        var command = AddCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<CodeVersionTestResource> addCodeVersionTest(@PathVariable String challengeId,
+                                                                      @PathVariable String codeVersionId,
+                                                                      @RequestBody AddCodeVersionTestResource resource) {
+        // Transform resource to domain command with codeVersionId from path (overriding path parameter)
+        var resourceWithCodeVersion = new AddCodeVersionTestResource(codeVersionId, resource.input(), 
+                                                                     resource.expectedOutput(), 
+                                                                     resource.customValidationCode(), 
+                                                                     resource.failureMessage());
+        var command = AddCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(resourceWithCodeVersion);
         
         // Execute command through domain service
         var testId = codeVersionTestCommandService.handle(command);
@@ -57,7 +63,9 @@ public class CodeVersionTestController {
 
     // Get test by ID
     @GetMapping("/{testId}")
-    public ResponseEntity<CodeVersionTestResource> getCodeVersionTestById(@PathVariable String testId) {
+    public ResponseEntity<CodeVersionTestResource> getCodeVersionTestById(@PathVariable String challengeId,
+                                                                          @PathVariable String codeVersionId,
+                                                                          @PathVariable String testId) {
         // Execute query through domain service
         var test = codeVersionTestQueryService.getCodeVersionTestById(new CodeVersionTestId(UUID.fromString(testId)));
         
@@ -71,8 +79,9 @@ public class CodeVersionTestController {
     }
 
     // Get all tests for a code version
-    @GetMapping("/code-version/{codeVersionId}")
-    public ResponseEntity<List<CodeVersionTestResource>> getTestsByCodeVersion(@PathVariable String codeVersionId) {
+    @GetMapping
+    public ResponseEntity<List<CodeVersionTestResource>> getTestsByCodeVersion(@PathVariable String challengeId,
+                                                                               @PathVariable String codeVersionId) {
         // Execute query through domain service
         var tests = codeVersionTestQueryService.getCodeVersionTestsByCodeVersionId(
                 new CodeVersionId(UUID.fromString(codeVersionId)));
@@ -87,8 +96,10 @@ public class CodeVersionTestController {
 
     // Update test content
     @PutMapping("/{testId}")
-    public ResponseEntity<CodeVersionTestResource> updateCodeVersionTest(@PathVariable String testId,
-                                                                       @RequestBody UpdateCodeVersionTestResource resource) {
+    public ResponseEntity<CodeVersionTestResource> updateCodeVersionTest(@PathVariable String challengeId,
+                                                                         @PathVariable String codeVersionId,
+                                                                         @PathVariable String testId,
+                                                                         @RequestBody UpdateCodeVersionTestResource resource) {
         // Transform resource to domain command
         var command = UpdateCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(testId, resource);
         
@@ -105,15 +116,5 @@ public class CodeVersionTestController {
         }
         
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    // Get test count for a code version
-    @GetMapping("/code-version/{codeVersionId}/count")
-    public ResponseEntity<Long> getTestCountByCodeVersion(@PathVariable String codeVersionId) {
-        // Execute query through domain service
-        var count = codeVersionTestQueryService.countTestsByCodeVersionId(
-                new CodeVersionId(UUID.fromString(codeVersionId)));
-        
-        return new ResponseEntity<>(count, HttpStatus.OK);
     }
 }
