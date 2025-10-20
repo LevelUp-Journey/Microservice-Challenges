@@ -36,9 +36,11 @@ public class SolutionController {
 
     // Create a new solution
     @PostMapping
-    public ResponseEntity<SolutionResource> createSolution(@RequestBody CreateSolutionResource resource) {
-        // Transform resource to domain command
-        var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<SolutionResource> createSolution(
+            @RequestBody CreateSolutionResource resource,
+            @RequestHeader("X-User-Id") String studentId) {
+        // Transform resource to domain command with studentId from token
+        var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(resource, studentId);
 
         // Execute command through domain service
         var solution = solutionCommandService.handle(command);
@@ -119,11 +121,13 @@ public class SolutionController {
 
     // Submit a solution for evaluation
     @PostMapping("/{solutionId}/submit")
-    public ResponseEntity<SubmissionResultResource> submitSolution(@PathVariable String solutionId,
-                                                                   @RequestBody SubmitSolutionResource resource) {
+    public ResponseEntity<SubmissionResultResource> submitSolution(
+            @PathVariable String solutionId,
+            @RequestBody SubmitSolutionResource resource,
+            @RequestHeader("X-User-Id") String studentId) {
         try {
-            // Transform resource to domain command
-            var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
+            // Transform resource to domain command with studentId from token
+            var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource, studentId);
 
             // Execute command through domain service
             var submissionResult = solutionCommandService.handle(command);

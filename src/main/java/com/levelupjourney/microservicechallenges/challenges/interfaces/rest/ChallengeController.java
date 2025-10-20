@@ -38,9 +38,11 @@ public class ChallengeController {
 
     // Create a new challenge
     @PostMapping
-    public ResponseEntity<ChallengeResource> createChallenge(@RequestBody CreateChallengeResource resource) {
-        // Transform resource to domain command
-        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<ChallengeResource> createChallenge(
+            @RequestBody CreateChallengeResource resource,
+            @RequestHeader("X-User-Id") String teacherId) {
+        // Transform resource to domain command with teacherId from token
+        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
 
         // Execute command through domain service
         var challengeId = challengeCommandService.handle(command);
