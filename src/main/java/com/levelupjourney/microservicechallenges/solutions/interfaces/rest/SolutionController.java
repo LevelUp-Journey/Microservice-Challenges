@@ -11,6 +11,7 @@ import com.levelupjourney.microservicechallenges.solutions.domain.services.Solut
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionQueryService;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.transform.*;
+import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,18 +28,24 @@ public class SolutionController {
 
     private final SolutionCommandService solutionCommandService;
     private final SolutionQueryService solutionQueryService;
+    private final JwtUtil jwtUtil;
 
     public SolutionController(SolutionCommandService solutionCommandService,
-                              SolutionQueryService solutionQueryService) {
+                              SolutionQueryService solutionQueryService,
+                              JwtUtil jwtUtil) {
         this.solutionCommandService = solutionCommandService;
         this.solutionQueryService = solutionQueryService;
+        this.jwtUtil = jwtUtil;
     }
 
     // Create a new solution
     @PostMapping
     public ResponseEntity<SolutionResource> createSolution(
             @RequestBody CreateSolutionResource resource,
-            @RequestHeader("X-User-Id") String studentId) {
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        // Extract studentId from JWT token
+        String studentId = jwtUtil.extractUserId(authorizationHeader);
+        
         // Transform resource to domain command with studentId from token
         var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(resource, studentId);
 
@@ -124,8 +131,11 @@ public class SolutionController {
     public ResponseEntity<SubmissionResultResource> submitSolution(
             @PathVariable String solutionId,
             @RequestBody SubmitSolutionResource resource,
-            @RequestHeader("X-User-Id") String studentId) {
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
+            // Extract studentId from JWT token
+            String studentId = jwtUtil.extractUserId(authorizationHeader);
+            
             // Transform resource to domain command with studentId from token
             var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource, studentId);
 

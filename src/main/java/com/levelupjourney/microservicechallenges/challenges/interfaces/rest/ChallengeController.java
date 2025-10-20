@@ -9,6 +9,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.services.Chal
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
+import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,18 +30,24 @@ public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
+    private final JwtUtil jwtUtil;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
-                               ChallengeQueryService challengeQueryService) {
+                               ChallengeQueryService challengeQueryService,
+                               JwtUtil jwtUtil) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
+        this.jwtUtil = jwtUtil;
     }
 
     // Create a new challenge
     @PostMapping
     public ResponseEntity<ChallengeResource> createChallenge(
             @RequestBody CreateChallengeResource resource,
-            @RequestHeader("X-User-Id") String teacherId) {
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        // Extract teacherId from JWT token
+        String teacherId = jwtUtil.extractUserId(authorizationHeader);
+        
         // Transform resource to domain command with teacherId from token
         var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
 
