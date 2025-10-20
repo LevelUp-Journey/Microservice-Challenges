@@ -4,6 +4,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * Utility class for JWT token operations.
  * Decodes JWT tokens to extract user information without signature verification.
@@ -91,5 +93,41 @@ public class JwtUtil {
             System.err.println("Error decoding JWT token: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Extracts the roles from a JWT token.
+     * 
+     * @param token The JWT token string
+     * @return The list of roles from the token payload, or empty list if extraction fails
+     */
+    public List<String> extractRoles(String token) {
+        if (token == null || token.isBlank()) {
+            return List.of();
+        }
+
+        try {
+            String cleanToken = token.startsWith("Bearer ") 
+                ? token.substring(7) 
+                : token;
+
+            DecodedJWT decodedJWT = JWT.decode(cleanToken);
+            return decodedJWT.getClaim("roles").asList(String.class);
+        } catch (Exception e) {
+            System.err.println("Error decoding JWT token roles: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Checks if the token contains a specific role.
+     * 
+     * @param token The JWT token string
+     * @param role The role to check for
+     * @return true if the token contains the role, false otherwise
+     */
+    public boolean hasRole(String token, String role) {
+        List<String> roles = extractRoles(token);
+        return roles.contains(role);
     }
 }

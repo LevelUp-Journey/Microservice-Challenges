@@ -3,6 +3,7 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetPublishedChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
@@ -68,21 +69,41 @@ public class ChallengeController {
     }
 
     // Get challenge by ID
+    // Ownership validation: Only the owner can view DRAFT/HIDDEN challenges, anyone can view PUBLISHED
     @GetMapping("/{challengeId}")
-    public ResponseEntity<ChallengeResource> getChallengeById(@PathVariable String challengeId) {
+    public ResponseEntity<?> getChallengeById(
+            @PathVariable String challengeId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        
         // Transform path variable to domain query
         var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
 
         // Execute query through domain service
-        var challenge = challengeQueryService.handle(query);
+        var challengeOptional = challengeQueryService.handle(query);
 
-        // Transform domain entity to response resource if found
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+        // Check if challenge exists
+        if (challengeOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("Challenge not found with id: " + challengeId));
         }
 
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        var challenge = challengeOptional.get();
+        
+        // Validate access based on challenge status
+        if (challenge.getStatus() != com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED) {
+            // Challenge is DRAFT or HIDDEN - only owner can access
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. This challenge is not published and you are not the owner."));
+            }
+        }
+        
+        // Transform domain entity to response resource
+        var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge);
+        return new ResponseEntity<>(challengeResource, HttpStatus.OK);
     }
 
     // Get all published challenges
@@ -101,13 +122,27 @@ public class ChallengeController {
     }
 
     // Get challenges by teacher ID (derived collection)
+    // Role-based filtering: Students see only PUBLISHED challenges, Teachers/Admins see all
     @GetMapping("/teachers/{teacherId}")
-    public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(@PathVariable String teacherId) {
-        // Transform path variable to domain query
-        var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
-
-        // Execute query through domain service
-        var challenges = challengeQueryService.handle(query);
+    public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(
+            @PathVariable String teacherId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        
+        // Extract user roles from JWT token
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        
+        // Determine which query to use based on user role
+        List<com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge> challenges;
+        
+        if (roles.contains("ROLE_STUDENT")) {
+            // Students can only see PUBLISHED challenges
+            var query = new GetPublishedChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
+            challenges = challengeQueryService.handle(query);
+        } else {
+            // Teachers and Admins can see all challenges (DRAFT and PUBLISHED)
+            var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
+            challenges = challengeQueryService.handle(query);
+        }
 
         // Transform domain entities to response resources
         var challengeResources = challenges.stream()
@@ -118,10 +153,35 @@ public class ChallengeController {
     }
 
     // Update an existing challenge (including status changes like publishing)
+    // Only the challenge owner (teacher) can update their own challenges
     @PatchMapping("/{challengeId}")
-    public ResponseEntity<ChallengeResource> updateChallenge(@PathVariable String challengeId,
-                                                             @RequestBody UpdateChallengeResource resource) {
+    public ResponseEntity<?> updateChallenge(
+            @PathVariable String challengeId,
+            @RequestBody UpdateChallengeResource resource,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+            
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+            
+            var challenge = challengeOptional.get();
+            
+            // Verify ownership: Only the teacher who created the challenge can update it
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to update this challenge. Only the challenge owner can make updates."));
+            }
+            
             // Transform resource to domain command
             var command = UpdateChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, resource);
 
@@ -129,24 +189,28 @@ public class ChallengeController {
             challengeCommandService.handle(command);
 
             // Retrieve updated challenge for response
-            var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
-            var challenge = challengeQueryService.handle(query);
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
 
             // Transform domain entity to response resource
-            if (challenge.isPresent()) {
-                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+            if (updatedChallenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get());
                 return new ResponseEntity<>(challengeResource, HttpStatus.OK);
             }
 
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (IllegalStateException e) {
             // Handle validation errors (e.g., publishing without required code versions/tests)
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
             // Handle invalid challenge ID or other argument errors
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
         }
     }
+    
+    // Simple error response record for consistent error handling
+    private record ErrorResponse(String message) {}
 
     // Unassign a tag from a challenge
     @DeleteMapping("/{challengeId}/tags/{tagId}")
