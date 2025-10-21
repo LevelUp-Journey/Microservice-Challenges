@@ -43,6 +43,11 @@ public class ChallengeController {
 
     // Create a new challenge
     @PostMapping
+    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Teacher ID extracted from JWT token.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Challenge created successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ChallengeResource> createChallenge(
             @RequestBody CreateChallengeResource resource,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
@@ -71,6 +76,12 @@ public class ChallengeController {
     // Get challenge by ID
     // Ownership validation: Only the owner can view DRAFT/HIDDEN challenges, anyone can view PUBLISHED
     @GetMapping("/{challengeId}")
+    @Operation(summary = "Get challenge by ID", description = "Retrieve a specific challenge. Access control: PUBLISHED challenges are public, DRAFT/HIDDEN require ownership.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenge retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not published and not owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
     public ResponseEntity<?> getChallengeById(
             @PathVariable String challengeId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
@@ -108,6 +119,10 @@ public class ChallengeController {
 
     // Get all published challenges
     @GetMapping
+    @Operation(summary = "Get all published challenges", description = "Retrieve all challenges with PUBLISHED status. Public endpoint.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Published challenges retrieved successfully")
+    })
     public ResponseEntity<List<ChallengeResource>> getAllPublishedChallenges() {
         // Execute query for published challenges
         var query = new GetAllPublishedChallengesQuery();
@@ -124,6 +139,10 @@ public class ChallengeController {
     // Get challenges by teacher ID (derived collection)
     // Role-based filtering: Students see only PUBLISHED challenges, Teachers/Admins see all
     @GetMapping("/teachers/{teacherId}")
+    @Operation(summary = "Get challenges by teacher", description = "Retrieve challenges by teacher ID. Role-based filtering: Students see only PUBLISHED, Teachers/Admins see all.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenges retrieved successfully")
+    })
     public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(
             @PathVariable String teacherId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
@@ -155,6 +174,13 @@ public class ChallengeController {
     // Update an existing challenge (including status changes like publishing)
     // Only the challenge owner (teacher) can update their own challenges
     @PatchMapping("/{challengeId}")
+    @Operation(summary = "Update challenge", description = "Update an existing challenge. Only the challenge owner can make updates.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenge updated successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found"),
+        @ApiResponse(responseCode = "400", description = "Validation error")
+    })
     public ResponseEntity<?> updateChallenge(
             @PathVariable String challengeId,
             @RequestBody UpdateChallengeResource resource,
