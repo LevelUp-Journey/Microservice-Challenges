@@ -13,6 +13,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.events.
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetTagByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TagId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.TagQueryService;
@@ -51,6 +52,23 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
         
         // Save to database
         Challenge savedChallenge = challengeRepository.save(challenge);
+        
+        // Assign tags if provided
+        if (command.tagIds() != null && !command.tagIds().isEmpty()) {
+            for (String tagId : command.tagIds()) {
+                try {
+                    Tag tag = tagQueryService.handle(new GetTagByIdQuery(new TagId(java.util.UUID.fromString(tagId))))
+                            .orElseThrow(() -> new IllegalArgumentException("Tag not found with ID: " + tagId));
+                    savedChallenge.addTag(tag);
+                } catch (IllegalArgumentException e) {
+                    // Log and skip invalid tag IDs
+                    throw new IllegalArgumentException("Invalid tag ID: " + tagId, e);
+                }
+            }
+            // Save again after adding tags
+            savedChallenge = challengeRepository.save(savedChallenge);
+        }
+        
         return savedChallenge.getId();
     }
 

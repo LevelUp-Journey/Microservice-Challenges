@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.queries
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetPublishedChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeRepository;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,11 @@ public class ChallengeQueryServiceImpl implements ChallengeQueryService {
     @Override
     public List<Challenge> handle(GetChallengesByTeacherIdQuery query) {
         return challengeRepository.findByTeacherId(query.teacherId().id());
+    }
+
+    @Override
+    public List<Challenge> handle(GetPublishedChallengesByTeacherIdQuery query) {
+        return challengeRepository.findPublishedChallengesByTeacherId(query.teacherId().id());
     }
 
     @Override

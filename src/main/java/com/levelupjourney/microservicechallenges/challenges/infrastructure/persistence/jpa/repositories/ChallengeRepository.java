@@ -18,6 +18,10 @@ public interface ChallengeRepository extends JpaRepository<Challenge, ChallengeI
     @Query("SELECT c FROM Challenge c WHERE c.teacherId.id = :teacherId")
     List<Challenge> findByTeacherId(@Param("teacherId") UUID teacherId);
 
+    // Find published challenges by teacher ID
+    @Query("SELECT c FROM Challenge c WHERE c.teacherId.id = :teacherId AND c.status = com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED")
+    List<Challenge> findPublishedChallengesByTeacherId(@Param("teacherId") UUID teacherId);
+
     // Find challenges by status
     List<Challenge> findByStatus(ChallengeStatus status);
 
