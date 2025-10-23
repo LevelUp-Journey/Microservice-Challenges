@@ -30,8 +30,9 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
 
     @Column(nullable = false)
     private String name;
-    
-    @Column(length = 1000)
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
     
     private Integer experiencePoints;

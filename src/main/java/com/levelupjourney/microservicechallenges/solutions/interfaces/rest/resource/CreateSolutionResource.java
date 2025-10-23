@@ -1,9 +1,8 @@
 package com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resource;
 
 public record CreateSolutionResource(
-    String challengeId, 
-    String codeVersionId, 
     String code
 ) {
-    // studentId will be extracted from JWT token
+    // challengeId, codeVersionId extracted from URL path
+    // studentId extracted from JWT token
 }

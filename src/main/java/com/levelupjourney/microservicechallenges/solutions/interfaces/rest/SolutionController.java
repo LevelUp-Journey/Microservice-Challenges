@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(value = "/api/v1/solutions", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/v1", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Solutions", description = "Endpoints for managing student solutions")
 public class SolutionController {
 
@@ -38,16 +38,20 @@ public class SolutionController {
         this.jwtUtil = jwtUtil;
     }
 
-    // Create a new solution
-    @PostMapping
+    // Create a new solution for a challenge's code version
+    // POST /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/solutions
+    @PostMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/solutions")
     public ResponseEntity<SolutionResource> createSolution(
+            @PathVariable String challengeId,
+            @PathVariable String codeVersionId,
             @RequestBody CreateSolutionResource resource,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         // Extract studentId from JWT token
         String studentId = jwtUtil.extractUserId(authorizationHeader);
         
-        // Transform resource to domain command with studentId from token
-        var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(resource, studentId);
+        // Transform resource to domain command with IDs from path
+        var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(
+            challengeId, codeVersionId, resource, studentId);
 
         // Execute command through domain service
         var solution = solutionCommandService.handle(command);
@@ -62,7 +66,8 @@ public class SolutionController {
     }
 
     // Get solution by ID
-    @GetMapping("/{solutionId}")
+    // GET /api/v1/solutions/{solutionId}
+    @GetMapping("/solutions/{solutionId}")
     public ResponseEntity<SolutionResource> getSolutionById(@PathVariable String solutionId) {
         // Transform path variable to domain query
         var query = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
@@ -79,9 +84,40 @@ public class SolutionController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    // Get solution by student ID and code version ID
-    @GetMapping("/students/{studentId}/code-versions/{codeVersionId}")
-    public ResponseEntity<SolutionResource> getSolutionByStudentAndCodeVersion(
+    // Get solution by challenge, code version and student (from token or path)
+    // GET /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/solutions
+    @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/solutions")
+    public ResponseEntity<SolutionResource> getSolutionByContext(
+            @PathVariable String challengeId,
+            @PathVariable String codeVersionId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+
+        // Extract studentId from JWT token (student's own solution)
+        String studentId = jwtUtil.extractUserId(authorizationHeader);
+
+        // Transform path variables to domain query
+        var query = new GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery(
+                new ChallengeId(UUID.fromString(challengeId)),
+                new CodeVersionId(UUID.fromString(codeVersionId)),
+                new StudentId(UUID.fromString(studentId))
+        );
+
+        // Execute query through domain service
+        var solution = solutionQueryService.handle(query);
+
+        // Transform domain entity to response resource if found
+        if (solution.isPresent()) {
+            var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(solution.get());
+            return new ResponseEntity<>(solutionResource, HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+
+    // Get specific student's solution (for teachers/admins)
+    // GET /api/v1/students/{studentId}/code-versions/{codeVersionId}/solutions
+    @GetMapping("/students/{studentId}/code-versions/{codeVersionId}/solutions")
+    public ResponseEntity<SolutionResource> getStudentSolution(
             @PathVariable String studentId,
             @PathVariable String codeVersionId) {
 
@@ -104,9 +140,11 @@ public class SolutionController {
     }
 
     // Update a solution
-    @PutMapping("/{solutionId}")
-    public ResponseEntity<SolutionResource> updateSolution(@PathVariable String solutionId,
-                                                           @RequestBody UpdateSolutionResource resource) {
+    // PUT /api/v1/solutions/{solutionId}
+    @PutMapping("/solutions/{solutionId}")
+    public ResponseEntity<SolutionResource> updateSolution(
+            @PathVariable String solutionId,
+            @RequestBody UpdateSolutionResource resource) {
         // Transform resource to domain command
         var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
 
@@ -126,8 +164,9 @@ public class SolutionController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    // Submit a solution for evaluation
-    @PostMapping("/{solutionId}/submit")
+    // Submit a solution for evaluation (RESTful: PUT to update status/state)
+    // PUT /api/v1/solutions/{solutionId}/submissions
+    @PutMapping("/solutions/{solutionId}/submissions")
     public ResponseEntity<SubmissionResultResource> submitSolution(
             @PathVariable String solutionId,
             @RequestBody SubmitSolutionResource resource,
@@ -174,31 +213,5 @@ public class SolutionController {
             );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
         }
-    }
-
-    // Get solution by challenge ID, code version ID and student ID
-    @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/students/{studentId}")
-    public ResponseEntity<SolutionResource> getSolutionByChallengeCodeVersionAndStudent(
-            @PathVariable String challengeId,
-            @PathVariable String codeVersionId,
-            @PathVariable String studentId) {
-
-        // Transform path variables to domain query
-        var query = new GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery(
-                new ChallengeId(UUID.fromString(challengeId)),
-                new CodeVersionId(UUID.fromString(codeVersionId)),
-                new StudentId(UUID.fromString(studentId))
-        );
-
-        // Execute query through domain service
-        var solution = solutionQueryService.handle(query);
-
-        // Transform domain entity to response resource if found
-        if (solution.isPresent()) {
-            var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(solution.get());
-            return new ResponseEntity<>(solutionResource, HttpStatus.OK);
-        }
-
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }
