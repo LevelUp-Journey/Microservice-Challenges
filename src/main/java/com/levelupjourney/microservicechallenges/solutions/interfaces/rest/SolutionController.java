@@ -240,13 +240,13 @@ public class SolutionController {
         }
     }
 
-    // Update a solution
+    // Update a solution's code
     // PUT /api/v1/solutions/{solutionId}
     @PutMapping("/solutions/{solutionId}")
-    @Operation(summary = "Update solution", 
-               description = "Update the code of an existing solution")
+    @Operation(summary = "Update solution code", 
+               description = "Update only the student's code in an existing solution. Other solution properties cannot be modified.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution updated successfully"),
+        @ApiResponse(responseCode = "200", description = "Solution code updated successfully"),
         @ApiResponse(responseCode = "404", description = "Solution not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request or ID format")
     })

@@ -238,7 +238,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         }
 
         var existingSolution = solution.get();
-        existingSolution.updateSolution(command.code(), command.language());
+        existingSolution.updateSolution(command.code());
         solutionRepository.save(existingSolution);
     }
 

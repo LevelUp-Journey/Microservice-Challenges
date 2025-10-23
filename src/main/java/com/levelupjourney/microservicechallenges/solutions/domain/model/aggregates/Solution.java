@@ -44,8 +44,12 @@ public class Solution extends AuditableAbstractAggregateRoot<Solution> {
         this.score = SolutionScore.defaultScore();
     }
     
-    public void updateSolution(String code, String language) {
-        // Update solution details with new code and language
+    /**
+     * Update the solution's code
+     * Only the student's code can be updated
+     * @param code The new code to save
+     */
+    public void updateSolution(String code) {
         this.details = new SolutionDetails(code);
     }
 

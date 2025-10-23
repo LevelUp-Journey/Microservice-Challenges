@@ -2,5 +2,9 @@ package com.levelupjourney.microservicechallenges.solutions.domain.model.command
 
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionId;
 
-public record UpdateSolutionCommand(SolutionId solutionId, String code, String language) {
+/**
+ * Command to update a solution's code
+ * Only the student's code can be updated
+ */
+public record UpdateSolutionCommand(SolutionId solutionId, String code) {
 }
