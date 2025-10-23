@@ -10,7 +10,8 @@ public class CodeVersionResourceFromEntityAssembler {
             entity.getId().id().toString(),
             entity.getChallengeId().id().toString(),
             entity.getLanguage().name(),
-            entity.getInitialCode()
+            entity.getInitialCode(),
+            entity.getFunctionName()
         );
     }
 }

@@ -4,5 +4,5 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 
 import java.util.Optional;
 
-public record UpdateCodeVersionTestCommand(CodeVersionTestId codeVersionTestId, Optional<String> input, Optional<String> expectedOutput, Optional<String> customValidationCode, Optional<String> failureMessage) {
+public record UpdateCodeVersionTestCommand(CodeVersionTestId codeVersionTestId, Optional<String> input, Optional<String> expectedOutput, Optional<String> customValidationCode, Optional<String> failureMessage, Optional<Boolean> isSecret) {
 }

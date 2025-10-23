@@ -2,5 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.comman
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 
-public record UpdateCodeVersionCommand(CodeVersionId codeVersionId, String code) {
+import java.util.Optional;
+
+public record UpdateCodeVersionCommand(CodeVersionId codeVersionId, Optional<String> code, Optional<String> functionName) {
 }

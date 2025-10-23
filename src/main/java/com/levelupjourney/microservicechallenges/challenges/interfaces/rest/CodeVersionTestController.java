@@ -36,6 +36,11 @@ public class CodeVersionTestController {
 
     // Create a new test for a code version
     @PostMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Create test", description = "Create a new test for a code version. isSecret indicates if the test is hidden from students.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Test created successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<CodeVersionTestResource> addCodeVersionTest(@PathVariable String challengeId,
                                                                       @PathVariable String codeVersionId,
                                                                       @RequestBody AddCodeVersionTestResource resource) {
@@ -43,7 +48,8 @@ public class CodeVersionTestController {
         var resourceWithCodeVersion = new AddCodeVersionTestResource(codeVersionId, resource.input(), 
                                                                      resource.expectedOutput(), 
                                                                      resource.customValidationCode(), 
-                                                                     resource.failureMessage());
+                                                                     resource.failureMessage(),
+                                                                     resource.isSecret());
         var command = AddCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(resourceWithCodeVersion);
         
         // Execute command through domain service
@@ -63,6 +69,11 @@ public class CodeVersionTestController {
 
     // Get test by ID
     @GetMapping("/{testId}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get test by ID", description = "Retrieve a specific test including its secret status.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Test retrieved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Test not found")
+    })
     public ResponseEntity<CodeVersionTestResource> getCodeVersionTestById(@PathVariable String challengeId,
                                                                           @PathVariable String codeVersionId,
                                                                           @PathVariable String testId) {
@@ -80,6 +91,10 @@ public class CodeVersionTestController {
 
     // Get all tests for a code version
     @GetMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get all tests", description = "Retrieve all tests for a code version, including secret tests.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Tests retrieved successfully")
+    })
     public ResponseEntity<List<CodeVersionTestResource>> getTestsByCodeVersion(@PathVariable String challengeId,
                                                                                @PathVariable String codeVersionId) {
         // Execute query through domain service
@@ -96,6 +111,11 @@ public class CodeVersionTestController {
 
     // Update test content
     @PutMapping("/{testId}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Update test", description = "Update test details including input, expected output, custom validation, failure message, and secret status.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Test updated successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Test not found")
+    })
     public ResponseEntity<CodeVersionTestResource> updateCodeVersionTest(@PathVariable String challengeId,
                                                                          @PathVariable String codeVersionId,
                                                                          @PathVariable String testId,

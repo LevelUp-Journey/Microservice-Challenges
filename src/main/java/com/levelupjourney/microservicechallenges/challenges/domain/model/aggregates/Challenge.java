@@ -51,13 +51,10 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersion> versions = new ArrayList<>();
     
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "challenge_tags",
-        joinColumns = @JoinColumn(name = "challenge_id"),
-        inverseJoinColumns = @JoinColumn(name = "tag_id")
-    )
-    private List<Tag> tags = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(name = "challenge_tags", joinColumns = @JoinColumn(name = "challenge_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {
         this.id = new ChallengeId(UUID.randomUUID());
@@ -67,6 +64,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         this.experiencePoints = command.experiencePoints();
         this.difficulty = command.difficulty();
         this.status = ChallengeStatus.DRAFT;
+        this.tags = command.tags() != null ? new ArrayList<>(command.tags()) : new ArrayList<>();
     }
     
     // Business methods
@@ -93,7 +91,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, List<String> tags) {
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
         }
@@ -110,7 +108,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, List<String> tags) {
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
         }
@@ -130,7 +128,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, ChallengeStatus status, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, ChallengeStatus status, List<String> tags) {
         // Update basic details
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
@@ -159,7 +157,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
 
-    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, ChallengeStatus status, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, ChallengeStatus status, List<String> tags) {
         // Update basic details
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
@@ -192,16 +190,16 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     }
 
     // Helper method to add a tag to the challenge
-    public void addTag(Tag tag) {
-        if (tag != null && !this.tags.contains(tag)) {
-            this.tags.add(tag);
+    public void addTag(String tag) {
+        if (tag != null && !tag.trim().isEmpty() && !this.tags.contains(tag.toLowerCase())) {
+            this.tags.add(tag.toLowerCase());
         }
     }
 
     // Helper method to remove a tag from the challenge
-    public void removeTag(Tag tag) {
+    public void removeTag(String tag) {
         if (tag != null) {
-            this.tags.remove(tag);
+            this.tags.remove(tag.toLowerCase());
         }
     }
 

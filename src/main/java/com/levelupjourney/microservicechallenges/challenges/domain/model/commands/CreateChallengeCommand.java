@@ -11,6 +11,6 @@ public record CreateChallengeCommand(
     String description, 
     Integer experiencePoints, 
     Difficulty difficulty,
-    List<String> tagIds
+    List<String> tags
 ) {
 }

@@ -12,7 +12,8 @@ public class CodeVersionTestResourceFromEntityAssembler {
             entity.getInput(),
             entity.getExpectedOutput(),
             entity.getCustomValidationCode(),
-            entity.getFailureMessage()
+            entity.getFailureMessage(),
+            entity.getIsSecret()
         );
     }
 }

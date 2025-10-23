@@ -32,6 +32,9 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
     @Column(name = "initial_code", columnDefinition = "TEXT")
     private String initialCode;
 
+    @Column(name = "function_name")
+    private String functionName;
+
     @OneToMany(mappedBy = "codeVersionId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersionTest> tests = new ArrayList<>();
 
@@ -40,10 +43,15 @@ public class CodeVersion extends AuditableAbstractAggregateRoot<CodeVersion> {
         this.challengeId = command.challengeId();
         this.language = command.language();
         this.initialCode = command.defaultCode() != null ? command.defaultCode() : ""; // Use default code from command
+        this.functionName = command.functionName() != null ? command.functionName() : "main";
     }
     
     // Business methods
     public void updateInitialCode(String newInitialCode) {
         this.initialCode = newInitialCode != null ? newInitialCode : "";
+    }
+
+    public void updateFunctionName(String newFunctionName) {
+        this.functionName = newFunctionName != null ? newFunctionName : "main";
     }
 }

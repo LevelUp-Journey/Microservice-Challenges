@@ -1,7 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.ChallengeResource;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.StarResource;
 
@@ -18,9 +17,7 @@ public class ChallengeResourceFromEntityAssembler {
             entity.getExperiencePoints(),
             entity.getDifficulty().name(),
             entity.getStatus().name(),
-            entity.getTags().stream()
-                .map(Tag::getName)
-                .collect(Collectors.toList()),
+            entity.getTags(), // Already List<String>
             entity.getStars().stream()
                 .map(star -> new StarResource(star.getUserId(), star.getStarredAt()))
                 .collect(Collectors.toList())

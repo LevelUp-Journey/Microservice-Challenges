@@ -41,7 +41,8 @@ public class CodeVersionTestCommandServiceImpl implements CodeVersionTestCommand
             command.input().orElse(null),
             command.expectedOutput().orElse(null),
             command.customValidationCode().orElse(null),
-            command.failureMessage().orElse(null)
+            command.failureMessage().orElse(null),
+            command.isSecret().orElse(null)
         );
         
         // Save changes

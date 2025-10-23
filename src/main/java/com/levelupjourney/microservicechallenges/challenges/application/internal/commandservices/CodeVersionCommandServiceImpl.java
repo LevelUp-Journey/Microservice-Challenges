@@ -44,8 +44,13 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
         CodeVersion codeVersion = codeVersionRepository.findById(command.codeVersionId())
                 .orElseThrow(() -> new RuntimeException("Code version not found: " + command.codeVersionId().id()));
         
-        // Update code using business method
-        codeVersion.updateInitialCode(command.code());
+        // Update code and function name using business methods with Optional handling
+        if (command.code().isPresent()) {
+            codeVersion.updateInitialCode(command.code().get());
+        }
+        if (command.functionName().isPresent()) {
+            codeVersion.updateFunctionName(command.functionName().get());
+        }
         
         // Save changes
         codeVersionRepository.save(codeVersion);

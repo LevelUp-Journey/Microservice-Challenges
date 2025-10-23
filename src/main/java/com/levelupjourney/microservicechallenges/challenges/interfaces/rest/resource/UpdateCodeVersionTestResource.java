@@ -6,6 +6,7 @@ public record UpdateCodeVersionTestResource(
     Optional<String> input,
     Optional<String> expectedOutput,
     Optional<String> customValidationCode,
-    Optional<String> failureMessage
+    Optional<String> failureMessage,
+    Optional<Boolean> isSecret
 ) {
 }
