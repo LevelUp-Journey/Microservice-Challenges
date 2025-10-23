@@ -78,7 +78,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         var existingSolution = solution.get();
         log.info("✅ Solution found:");
         log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id());
-        log.info("  - Current status: '{}'", existingSolution.getDetails().getStatus());
+        log.info("  - Current status: '{}'", existingSolution.getStatus());
 
         try {
             // 2. Get code version details (language + tests) through ACL
@@ -238,7 +238,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         }
 
         var existingSolution = solution.get();
-        existingSolution.updateSolution(command.code());
+        existingSolution.updateCode(command.code());
         solutionRepository.save(existingSolution);
     }
 

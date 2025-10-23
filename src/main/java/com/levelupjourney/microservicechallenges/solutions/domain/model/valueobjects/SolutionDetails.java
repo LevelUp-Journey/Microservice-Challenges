@@ -33,4 +33,15 @@ public class SolutionDetails {
         this.status = SolutionStatus.NO_TESTED;
         this.code = code;
     }
+
+    /**
+     * Constructor to create SolutionDetails preserving all fields
+     * Used when updating only the code
+     */
+    public SolutionDetails(String code, Integer attempts, Date lastAttemptAt, SolutionStatus status) {
+        this.code = code;
+        this.attempts = attempts;
+        this.lastAttemptAt = lastAttemptAt;
+        this.status = status;
+    }
 }

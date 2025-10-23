@@ -16,9 +16,13 @@ import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resou
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.transform.*;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,18 +55,41 @@ public class SolutionController {
     // Automatically initializes with code version's default code
     // POST /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/solutions
     @PostMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/solutions")
-    @Operation(summary = "Create solution", 
-               description = "Create a new solution for a challenge. Automatically initializes with the code version's default code. Student can only have one solution per code version.")
+    @Operation(
+        summary = "Create solution", 
+        description = "Create a new solution for a challenge. Automatically initializes with the code version's default code. Student can only have one solution per code version. Requires JWT authentication."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Solution created successfully with default code"),
-        @ApiResponse(responseCode = "409", description = "Conflict - student already has a solution for this code version"),
-        @ApiResponse(responseCode = "404", description = "Challenge or code version not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid challenge or code version ID")
+        @ApiResponse(
+            responseCode = "201", 
+            description = "Solution created successfully with default code",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "409", 
+            description = "Conflict - student already has a solution for this code version",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Challenge or code version not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid challenge or code version ID format",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "500", 
+            description = "Internal server error",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
     public ResponseEntity<?> createSolution(
-            @PathVariable String challengeId,
-            @PathVariable String codeVersionId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
+            @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
+            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
             // Extract studentId from JWT token
             String studentId = jwtUtil.extractUserId(authorizationHeader);
@@ -127,14 +154,29 @@ public class SolutionController {
     // Get solution by ID
     // GET /api/v1/solutions/{solutionId}
     @GetMapping("/solutions/{solutionId}")
-    @Operation(summary = "Get solution by ID", 
-               description = "Retrieve a specific solution by its unique identifier")
+    @Operation(
+        summary = "Get solution by ID", 
+        description = "Retrieve a specific solution by its unique identifier. No authentication required."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution found"),
-        @ApiResponse(responseCode = "404", description = "Solution not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid solution ID format")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Solution found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Solution not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid solution ID format",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
-    public ResponseEntity<?> getSolutionById(@PathVariable String solutionId) {
+    public ResponseEntity<?> getSolutionById(
+            @Parameter(description = "UUID of the solution") @PathVariable String solutionId) {
         try {
             // Transform path variable to domain query
             var query = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
@@ -157,20 +199,39 @@ public class SolutionController {
         }
     }
 
-    // Get solution by challenge, code version and student (from token or path)
+    // Get solution by challenge, code version and student (from token)
     // GET /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/solutions
     @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/solutions")
-    @Operation(summary = "Get student's solution", 
-               description = "Retrieve the authenticated student's solution for a specific code version")
+    @Operation(
+        summary = "Get student's solution", 
+        description = "Retrieve the authenticated student's solution for a specific code version. The student ID is extracted from the JWT token. Requires authentication."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution found"),
-        @ApiResponse(responseCode = "404", description = "Solution not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid ID format")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Solution found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Solution not found for this challenge and code version",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid ID format",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "401", 
+            description = "Unauthorized - JWT token required",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
     public ResponseEntity<?> getSolutionByContext(
-            @PathVariable String challengeId,
-            @PathVariable String codeVersionId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
+            @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
+            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
 
         try {
             // Extract studentId from JWT token (student's own solution)
@@ -204,16 +265,35 @@ public class SolutionController {
     // Get specific student's solution (for teachers/admins)
     // GET /api/v1/students/{studentId}/code-versions/{codeVersionId}/solutions
     @GetMapping("/students/{studentId}/code-versions/{codeVersionId}/solutions")
-    @Operation(summary = "Get specific student's solution", 
-               description = "Retrieve a solution for a specific student and code version (for teachers/admins)")
+    @Operation(
+        summary = "Get specific student's solution", 
+        description = "Retrieve a solution for a specific student and code version. Intended for teachers/admins to review student work. Requires appropriate authorization."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution found"),
-        @ApiResponse(responseCode = "404", description = "Solution not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid ID format")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Solution found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Solution not found for the specified student",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid ID format",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "403", 
+            description = "Forbidden - insufficient permissions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
     public ResponseEntity<?> getStudentSolution(
-            @PathVariable String studentId,
-            @PathVariable String codeVersionId) {
+            @Parameter(description = "UUID of the student") @PathVariable String studentId,
+            @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId) {
 
         try {
             // Transform path variables to domain query
@@ -243,16 +323,35 @@ public class SolutionController {
     // Update a solution's code
     // PUT /api/v1/solutions/{solutionId}
     @PutMapping("/solutions/{solutionId}")
-    @Operation(summary = "Update solution code", 
-               description = "Update only the student's code in an existing solution. Other solution properties cannot be modified.")
+    @Operation(
+        summary = "Update solution code", 
+        description = "Update only the student's code in an existing solution. Other solution properties cannot be modified. The code field is required and cannot be empty."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution code updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Solution not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid request or ID format")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Solution code updated successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Solution not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid request or ID format. Code field is required and cannot be empty.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "500", 
+            description = "Internal server error",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
     public ResponseEntity<?> updateSolution(
-            @PathVariable String solutionId,
-            @RequestBody UpdateSolutionResource resource) {
+            @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
+            @RequestBody(description = "Solution update request containing the new code") UpdateSolutionResource resource) {
         try {
             // Transform resource to domain command
             var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
@@ -285,18 +384,36 @@ public class SolutionController {
     // Submit a solution for evaluation (RESTful: PUT to update status/state)
     // PUT /api/v1/solutions/{solutionId}/submissions
     @PutMapping("/solutions/{solutionId}/submissions")
-    @Operation(summary = "Submit solution for evaluation", 
-               description = "Submit a solution to be evaluated by the code runner service")
+    @Operation(
+        summary = "Submit solution for evaluation", 
+        description = "Submit a solution to be evaluated by the code runner service. The solution code is sent to a remote evaluator service for test execution. Results include test pass/fail status, execution details, and time taken."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solution submitted and evaluated successfully"),
-        @ApiResponse(responseCode = "404", description = "Solution not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid request or ID format"),
-        @ApiResponse(responseCode = "500", description = "Evaluation failed")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Solution submitted and evaluated successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SubmissionResultResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "404", 
+            description = "Solution not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid request or ID format",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "500", 
+            description = "Evaluation failed or internal server error",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+        )
     })
     public ResponseEntity<?> submitSolution(
-            @PathVariable String solutionId,
+            @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
             @RequestBody SubmitSolutionResource resource,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
             // Extract studentId from JWT token
             String studentId = jwtUtil.extractUserId(authorizationHeader);
