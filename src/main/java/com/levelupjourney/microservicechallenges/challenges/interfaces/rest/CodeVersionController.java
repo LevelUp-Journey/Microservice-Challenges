@@ -38,10 +38,16 @@ public class CodeVersionController {
 
     // Create a new code version for a challenge
     @PostMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Create code version", description = "Create a new code version for a challenge with initial code and function name.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Code version created successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Code version already exists for this language"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<CodeVersionResource> createCodeVersion(@PathVariable String challengeId,
                                                                  @RequestBody AddCodeVersionResource resource) {
         // Transform resource to domain command with challengeId from path (overriding path parameter)
-        var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode());
+        var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode(), resource.functionName());
         var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resourceWithChallenge);
         
         // Execute command through domain service
@@ -62,6 +68,11 @@ public class CodeVersionController {
 
     // Get code version by ID
     @GetMapping("/{codeVersionId}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get code version by ID", description = "Retrieve a specific code version including its function name.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version retrieved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
+    })
     public ResponseEntity<CodeVersionResource> getCodeVersionById(@PathVariable String challengeId,
                                                                   @PathVariable String codeVersionId) {
         // Transform path variables to domain query
@@ -81,6 +92,10 @@ public class CodeVersionController {
 
     // Get all code versions for a challenge
     @GetMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get all code versions", description = "Retrieve all code versions for a specific challenge.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code versions retrieved successfully")
+    })
     public ResponseEntity<List<CodeVersionResource>> getCodeVersionsByChallenge(@PathVariable String challengeId) {
         // Transform path variable to domain query
         var query = new GetCodeVersionsByChallengeIdQuery(new ChallengeId(UUID.fromString(challengeId)));
@@ -98,6 +113,11 @@ public class CodeVersionController {
 
     // Update code version content
     @PutMapping("/{codeVersionId}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Update code version", description = "Update the initial code and/or function name of a code version.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version updated successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
+    })
     public ResponseEntity<CodeVersionResource> updateCodeVersion(@PathVariable String challengeId,
                                                                @PathVariable String codeVersionId,
                                                                @RequestBody UpdateCodeVersionResource resource) {

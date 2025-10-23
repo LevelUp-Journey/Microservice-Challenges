@@ -174,7 +174,12 @@ public class ChallengeController {
     // Update an existing challenge (including status changes like publishing)
     // Only the challenge owner (teacher) can update their own challenges
     @PatchMapping("/{challengeId}")
-    @Operation(summary = "Update challenge", description = "Update an existing challenge. Only the challenge owner can make updates.")
+    @Operation(
+        summary = "Update challenge", 
+        description = "Update an existing challenge. All fields are optional - only send the fields you want to update. " +
+                      "For example, to publish a challenge, send only: {\"status\": \"PUBLISHED\"}. " +
+                      "Only the challenge owner can make updates."
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Challenge updated successfully"),
         @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
@@ -227,7 +232,58 @@ public class ChallengeController {
         } catch (IllegalStateException e) {
             // Handle validation errors (e.g., publishing without required code versions/tests)
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("Validation error: " + e.getMessage()));
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            // Handle invalid challenge ID or other argument errors
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // Delete a challenge by ID
+    // Only the challenge owner (teacher) can delete their own challenges
+    @DeleteMapping("/{challengeId}")
+    @Operation(summary = "Delete challenge", description = "Delete a challenge by ID. Only the challenge owner can delete their own challenges.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Challenge deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> deleteChallenge(
+            @PathVariable String challengeId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        try {
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+            
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+            
+            var challenge = challengeOptional.get();
+            
+            // Verify ownership: Only the teacher who created the challenge can delete it
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to delete this challenge. Only the challenge owner can delete it."));
+            }
+            
+            // Transform to domain command
+            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.DeleteChallengeCommand(
+                new ChallengeId(UUID.fromString(challengeId))
+            );
+
+            // Execute delete command through domain service
+            challengeCommandService.handle(command);
+
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             // Handle invalid challenge ID or other argument errors
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -237,55 +293,4 @@ public class ChallengeController {
     
     // Simple error response record for consistent error handling
     private record ErrorResponse(String message) {}
-
-    // Unassign a tag from a challenge
-    @DeleteMapping("/{challengeId}/tags/{tagId}")
-    @Operation(summary = "Unassign tag from challenge", description = "Unassign a specific tag from a challenge")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Tag successfully unassigned from challenge"),
-        @ApiResponse(responseCode = "404", description = "Challenge or tag not found")
-    })
-    public ResponseEntity<Void> unassignTagFromChallenge(@PathVariable String challengeId,
-                                                        @PathVariable String tagId) {
-        try {
-            // Transform path variables to domain command
-            var command = UnassignTagFromChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, tagId);
-
-            // Execute command through domain service
-            challengeCommandService.handle(command);
-
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Get tags for a specific challenge
-    @GetMapping("/{challengeId}/tags")
-    @Operation(summary = "Get challenge tags", description = "Retrieve all tags associated with a specific challenge")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully retrieved challenge tags"),
-        @ApiResponse(responseCode = "404", description = "Challenge not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid challenge ID format")
-    })
-    public ResponseEntity<List<TagResource>> getChallengeTags(@PathVariable String challengeId) {
-        try {
-            // Get challenge by ID
-            var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
-            var challenge = challengeQueryService.handle(query);
-
-            if (challenge.isPresent()) {
-                // Transform challenge tags to response resources
-                var tagResources = challenge.get().getTags().stream()
-                        .map(TagResourceFromEntityAssembler::toResourceFromEntity)
-                        .collect(Collectors.toList());
-
-                return new ResponseEntity<>(tagResources, HttpStatus.OK);
-            }
-
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-    }
 }

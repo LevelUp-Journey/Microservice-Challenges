@@ -7,7 +7,7 @@ public record CreateChallengeResource(
     String description, 
     Integer experiencePoints, 
     String difficulty,
-    List<String> tagIds
+    List<String> tags  // Tags as strings, e.g., ["#principiante", "#java", "#loops"]
 ) {
     // teacherId will be extracted from JWT token
 }

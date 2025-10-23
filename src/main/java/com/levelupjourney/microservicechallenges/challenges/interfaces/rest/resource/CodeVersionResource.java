@@ -4,6 +4,7 @@ public record CodeVersionResource(
     String id,
     String challengeId,
     String language,
-    String initialCode
+    String initialCode,
+    String functionName
 ) {
 }

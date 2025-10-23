@@ -12,8 +12,12 @@ import java.util.UUID;
 public class CreateChallengeCommandFromResourceAssembler {
 
     public static CreateChallengeCommand toCommandFromResource(CreateChallengeResource resource, String teacherId) {
-        // Use provided tagIds or empty list if not provided
-        List<String> tagIds = resource.tagIds() != null ? resource.tagIds() : Collections.emptyList();
+        // Normalize tags: lowercase and ensure they start with #
+        List<String> tags = resource.tags() != null 
+            ? resource.tags().stream()
+                .map(tag -> tag.startsWith("#") ? tag.toLowerCase() : "#" + tag.toLowerCase())
+                .toList()
+            : Collections.emptyList();
         
         return new CreateChallengeCommand(
             new TeacherId(UUID.fromString(teacherId)),
@@ -21,7 +25,7 @@ public class CreateChallengeCommandFromResourceAssembler {
             resource.description(),
             resource.experiencePoints(),
             Difficulty.valueOf(resource.difficulty().toUpperCase()),
-            tagIds
+            tags
         );
     }
 }

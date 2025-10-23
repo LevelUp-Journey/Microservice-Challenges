@@ -1,7 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.application.internal.queryservices;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Tag;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllChallengeTagsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
@@ -45,8 +44,8 @@ public class ChallengeQueryServiceImpl implements ChallengeQueryService {
     }
 
     @Override
-    public List<Tag> handle(GetAllChallengeTagsQuery query) {
-        // Get all challenges and extract their tags
+    public List<String> handle(GetAllChallengeTagsQuery query) {
+        // Get all challenges and extract their tags as strings
         return challengeRepository.findAll()
                 .stream()
                 .flatMap(challenge -> challenge.getTags().stream())

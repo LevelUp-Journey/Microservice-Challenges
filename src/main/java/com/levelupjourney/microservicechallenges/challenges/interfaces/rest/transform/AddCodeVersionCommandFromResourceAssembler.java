@@ -13,7 +13,8 @@ public class AddCodeVersionCommandFromResourceAssembler {
         return new AddCodeVersionCommand(
             new ChallengeId(UUID.fromString(resource.challengeId())),
             CodeLanguage.valueOf(resource.language().toUpperCase()),
-            resource.defaultCode()
+            resource.defaultCode(),
+            resource.functionName()
         );
     }
 }

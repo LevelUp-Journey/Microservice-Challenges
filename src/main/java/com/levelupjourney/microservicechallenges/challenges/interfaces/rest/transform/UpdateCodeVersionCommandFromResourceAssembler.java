@@ -11,7 +11,8 @@ public class UpdateCodeVersionCommandFromResourceAssembler {
     public static UpdateCodeVersionCommand toCommandFromResource(String codeVersionId, UpdateCodeVersionResource resource) {
         return new UpdateCodeVersionCommand(
             new CodeVersionId(UUID.fromString(codeVersionId)),
-            resource.code()
+            resource.code(),
+            resource.functionName()
         );
     }
 }

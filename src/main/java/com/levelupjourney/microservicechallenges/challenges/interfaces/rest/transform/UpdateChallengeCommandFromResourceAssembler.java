@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.Difficulty;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.UpdateChallengeResource;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,12 @@ public class UpdateChallengeCommandFromResourceAssembler {
         Optional<Difficulty> difficulty = resource.difficulty()
             .map(difficultyStr -> Difficulty.valueOf(difficultyStr.toUpperCase()));
         
+        // Normalize tags: lowercase and ensure # prefix (only if tags are present)
+        Optional<List<String>> tags = resource.tags()
+            .map(tagList -> tagList.stream()
+                .map(tag -> tag.startsWith("#") ? tag.toLowerCase() : "#" + tag.toLowerCase())
+                .toList());
+        
         return new UpdateChallengeCommand(
             new ChallengeId(UUID.fromString(challengeId)),
             resource.name(),
@@ -27,7 +34,7 @@ public class UpdateChallengeCommandFromResourceAssembler {
             resource.experiencePoints(),
             difficulty,
             status,
-            Optional.empty() // TODO: Implementar asignación de tags existentes por ID
+            tags
         );
     }
 }
