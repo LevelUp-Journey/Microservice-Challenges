@@ -323,31 +323,6 @@ public class SolutionController {
     // Update a solution's code (CQRS Command)
     // PUT /api/v1/solutions/{solutionId}
     @PutMapping("/solutions/{solutionId}")
-    @Operation(
-        summary = "Update solution code", 
-        description = """
-            Updates the source code of an existing solution.
-            
-            This endpoint follows CQRS principles:
-            - Command side: Executes the UpdateSolutionCommand to modify the aggregate
-            - Query side: Retrieves the updated solution state for response
-            
-            **Business Rules:**
-            - Solution must exist (returns 404 if not found)
-            - Code cannot be empty or contain only whitespace
-            - Code must be between 1 and 50,000 characters
-            - Only the code field can be modified through this endpoint
-            - Solution status, attempts, and scores are managed through separate endpoints
-            
-            **Use Cases:**
-            - Student iterating on their solution implementation
-            - Student fixing bugs before submission
-            - Student improving code quality or performance
-            
-            **Note:** This endpoint only updates the code. To submit for evaluation,
-            use the POST /api/v1/solutions/{solutionId}/submissions endpoint.
-            """
-    )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
@@ -463,10 +438,7 @@ public class SolutionController {
             @RequestBody @jakarta.validation.Valid UpdateSolutionResource resource) {
         
         try {
-            // ========================================
-            // COMMAND SIDE (CQRS)
-            // ========================================
-            
+
             // Step 1: Transform REST resource to Domain command (Anti-Corruption Layer)
             var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(
                 solutionId, 
@@ -476,10 +448,7 @@ public class SolutionController {
             // Step 2: Execute command through Application Service (Command Handler)
             solutionCommandService.handle(command);
 
-            // ========================================
-            // QUERY SIDE (CQRS)
-            // ========================================
-            
+
             // Step 3: Retrieve updated solution for response
             var query = new GetSolutionByIdQuery(command.solutionId());
             var solutionOptional = solutionQueryService.handle(query);
@@ -527,13 +496,18 @@ public class SolutionController {
     @PutMapping("/solutions/{solutionId}/submissions")
     @Operation(
         summary = "Submit solution for evaluation", 
-        description = "Submit a solution to be evaluated by the code runner service. The solution code is sent to a remote evaluator service for test execution. Results include test pass/fail status, execution details, and time taken."
+        description = "Submit a solution to be evaluated by the code runner service. The solution code is automatically retrieved from the database. Only the solution owner (student), teachers, or admins can submit solutions for evaluation."
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200", 
             description = "Solution submitted and evaluated successfully",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SubmissionResultResource.class))
+        ),
+        @ApiResponse(
+            responseCode = "403", 
+            description = "Forbidden - Only the solution owner, teachers, or admins can submit solutions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
         ),
         @ApiResponse(
             responseCode = "404", 
@@ -553,14 +527,42 @@ public class SolutionController {
     })
     public ResponseEntity<?> submitSolution(
             @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
-            @RequestBody SubmitSolutionResource resource,
             @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
-            // Extract studentId from JWT token
-            String studentId = jwtUtil.extractUserId(authorizationHeader);
+            // Extract userId and roles from JWT token
+            String currentUserId = jwtUtil.extractUserId(authorizationHeader);
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
             
-            // Transform resource to domain command with studentId from token
-            var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource, studentId);
+            // Get the solution to verify ownership
+            var solutionQuery = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
+            var solutionOptional = solutionQueryService.handle(solutionQuery);
+            
+            if (solutionOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Solution not found: " + solutionId));
+            }
+            
+            var solution = solutionOptional.get();
+            String solutionOwnerId = solution.getStudentId().id().toString();
+            
+            // Authorization check: Only solution owner, teachers, or admins can submit
+            boolean isOwner = currentUserId.equals(solutionOwnerId);
+            boolean isTeacherOrAdmin = roles.contains("TEACHER") || roles.contains("ADMIN");
+            
+            if (!isOwner && !isTeacherOrAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only the solution owner, teachers, or admins can submit this solution for evaluation."));
+            }
+            
+            // Get the code from the solution
+            String code = solution.getCode();
+            
+            // Transform to domain command using solution's code
+            var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(
+                solutionId, 
+                code, 
+                currentUserId
+            );
 
             // Execute command through domain service
             var submissionResult = solutionCommandService.handle(command);

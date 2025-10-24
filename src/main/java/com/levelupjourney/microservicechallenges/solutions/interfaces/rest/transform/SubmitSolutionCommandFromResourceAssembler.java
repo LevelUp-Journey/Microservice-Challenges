@@ -16,4 +16,13 @@ public class SubmitSolutionCommandFromResourceAssembler {
             new StudentId(UUID.fromString(studentId))
         );
     }
+    
+    // Overload for when code is provided directly (from solution entity)
+    public static SubmitSolutionCommand toCommandFromResource(String solutionId, String code, String studentId) {
+        return new SubmitSolutionCommand(
+            new SolutionId(UUID.fromString(solutionId)),
+            code,
+            new StudentId(UUID.fromString(studentId))
+        );
+    }
 }
