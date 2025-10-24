@@ -18,11 +18,11 @@ import com.levelupjourney.microservicechallenges.shared.infrastructure.security.
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -320,64 +320,205 @@ public class SolutionController {
         }
     }
 
-    // Update a solution's code
+    // Update a solution's code (CQRS Command)
     // PUT /api/v1/solutions/{solutionId}
     @PutMapping("/solutions/{solutionId}")
     @Operation(
         summary = "Update solution code", 
-        description = "Update only the student's code in an existing solution. Other solution properties cannot be modified. The code field is required and cannot be empty."
+        description = """
+            Updates the source code of an existing solution.
+            
+            This endpoint follows CQRS principles:
+            - Command side: Executes the UpdateSolutionCommand to modify the aggregate
+            - Query side: Retrieves the updated solution state for response
+            
+            **Business Rules:**
+            - Solution must exist (returns 404 if not found)
+            - Code cannot be empty or contain only whitespace
+            - Code must be between 1 and 50,000 characters
+            - Only the code field can be modified through this endpoint
+            - Solution status, attempts, and scores are managed through separate endpoints
+            
+            **Use Cases:**
+            - Student iterating on their solution implementation
+            - Student fixing bugs before submission
+            - Student improving code quality or performance
+            
+            **Note:** This endpoint only updates the code. To submit for evaluation,
+            use the POST /api/v1/solutions/{solutionId}/submissions endpoint.
+            """
     )
     @ApiResponses(value = {
         @ApiResponse(
-            responseCode = "200", 
-            description = "Solution code updated successfully",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolutionResource.class))
+            responseCode = "200",
+            description = "Solution code successfully updated. Returns the complete updated solution.",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = SolutionResource.class),
+                examples = @ExampleObject(
+                    name = "Updated Solution",
+                    description = "Example of a successfully updated solution response",
+                    value = """
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440000",
+                          "challengeId": "123e4567-e89b-12d3-a456-426614174000",
+                          "codeVersionId": "789e0123-e45b-67c8-d901-234567890abc",
+                          "studentId": "456e7890-e12b-34c5-d678-901234567def",
+                          "code": "function solve(n) {\\n  if (n < 2) return false;\\n  for (let i = 2; i <= Math.sqrt(n); i++) {\\n    if (n % i === 0) return false;\\n  }\\n  return true;\\n}",
+                          "status": "IN_PROGRESS",
+                          "attempts": 0,
+                          "lastAttemptAt": null,
+                          "score": null,
+                          "createdAt": "2024-01-15T10:30:00"
+                        }
+                        """
+                )
+            )
         ),
         @ApiResponse(
-            responseCode = "404", 
-            description = "Solution not found",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            responseCode = "400",
+            description = "Bad Request - Invalid input data or business rule violation",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                    @ExampleObject(
+                        name = "Invalid UUID Format",
+                        description = "Solution ID is not a valid UUID",
+                        value = """
+                            {
+                              "message": "Invalid solution ID format: 'invalid-uuid'. Expected a valid UUID.",
+                              "timestamp": "2024-01-15T10:30:00"
+                            }
+                            """
+                    ),
+                    @ExampleObject(
+                        name = "Empty Code",
+                        description = "Code field is empty or contains only whitespace",
+                        value = """
+                            {
+                              "message": "Code cannot be empty or contain only whitespace",
+                              "timestamp": "2024-01-15T10:30:00"
+                            }
+                            """
+                    ),
+                    @ExampleObject(
+                        name = "Code Too Long",
+                        description = "Code exceeds maximum length",
+                        value = """
+                            {
+                              "message": "Code cannot exceed 50000 characters (current: 51234)",
+                              "timestamp": "2024-01-15T10:30:00"
+                            }
+                            """
+                    )
+                }
+            )
         ),
         @ApiResponse(
-            responseCode = "400", 
-            description = "Invalid request or ID format. Code field is required and cannot be empty.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            responseCode = "404",
+            description = "Not Found - Solution with the specified ID does not exist",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Solution Not Found",
+                    description = "No solution exists with the provided ID",
+                    value = """
+                        {
+                          "message": "Solution not found with ID: 550e8400-e29b-41d4-a716-446655440000",
+                          "timestamp": "2024-01-15T10:30:00"
+                        }
+                        """
+                )
+            )
         ),
         @ApiResponse(
-            responseCode = "500", 
-            description = "Internal server error",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            responseCode = "500",
+            description = "Internal Server Error - Unexpected error during solution update",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Internal Server Error",
+                    description = "Unexpected error occurred while processing the request",
+                    value = """
+                        {
+                          "message": "Failed to update solution: Database connection timeout",
+                          "timestamp": "2024-01-15T10:30:00"
+                        }
+                        """
+                )
+            )
         )
     })
     public ResponseEntity<?> updateSolution(
-            @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
-            @RequestBody(description = "Solution update request containing the new code") UpdateSolutionResource resource) {
+            @Parameter(
+                description = "Unique identifier of the solution to update (UUID format)",
+                example = "550e8400-e29b-41d4-a716-446655440000",
+                required = true
+            ) 
+            @PathVariable String solutionId,
+            
+            @RequestBody @jakarta.validation.Valid UpdateSolutionResource resource) {
+        
         try {
-            // Transform resource to domain command
-            var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(solutionId, resource);
+            // ========================================
+            // COMMAND SIDE (CQRS)
+            // ========================================
+            
+            // Step 1: Transform REST resource to Domain command (Anti-Corruption Layer)
+            var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(
+                solutionId, 
+                resource
+            );
 
-            // Execute command through domain service
+            // Step 2: Execute command through Application Service (Command Handler)
             solutionCommandService.handle(command);
 
-            // Retrieve updated solution for response
-            var query = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
-            var solution = solutionQueryService.handle(query);
+            // ========================================
+            // QUERY SIDE (CQRS)
+            // ========================================
+            
+            // Step 3: Retrieve updated solution for response
+            var query = new GetSolutionByIdQuery(command.solutionId());
+            var solutionOptional = solutionQueryService.handle(query);
 
-            // Transform domain entity to response resource
-            if (solution.isPresent()) {
-                var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(solution.get());
-                return new ResponseEntity<>(solutionResource, HttpStatus.OK);
+            // Step 4: Transform domain entity to REST resource
+            if (solutionOptional.isPresent()) {
+                var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(
+                    solutionOptional.get()
+                );
+                return ResponseEntity.ok(solutionResource);
             }
 
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse("Solution not found with id: " + solutionId));
+            // This should never happen as the command handler validates existence
+            // But we handle it defensively for robustness
+            return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(
+                    String.format("Solution not found with ID: %s", solutionId)
+                ));
                     
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse("Invalid ID format: " + e.getMessage()));
+            // Handle validation errors (invalid UUID, empty code, etc.)
+            return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+                
+        } catch (IllegalStateException e) {
+            // Handle domain state errors (aggregate invariant violations)
+            return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+                
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("Failed to update solution: " + e.getMessage()));
+            // Handle unexpected errors
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(
+                    String.format("Failed to update solution: %s", e.getMessage())
+                ));
         }
     }
 
