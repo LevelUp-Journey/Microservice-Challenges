@@ -18,7 +18,7 @@ public class JwtUtil {
     private final Algorithm algorithm;
 
     public JwtUtil(@Value("${jwt.secret}") String jwtSecret) {
-        this.algorithm = Algorithm.HMAC256(jwtSecret);
+        this.algorithm = Algorithm.HMAC512(jwtSecret);
     }
 
     /**

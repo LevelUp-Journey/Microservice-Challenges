@@ -57,7 +57,7 @@ public class CodeVersionController {
         // Extract user roles from JWT token - only teachers can create code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("TEACHER") && !roles.contains("ADMIN")) {
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErrorResponse("Access denied. Only teachers and admins can create code versions."));
         }
@@ -95,7 +95,7 @@ public class CodeVersionController {
         // Extract user roles from JWT token - only teachers can access code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("TEACHER") && !roles.contains("ADMIN")) {
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
         }
@@ -126,7 +126,7 @@ public class CodeVersionController {
         // Extract user roles from JWT token - only teachers can access code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("TEACHER") && !roles.contains("ADMIN")) {
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
         }
@@ -159,7 +159,7 @@ public class CodeVersionController {
         // Extract user roles from JWT token - only teachers can update code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("TEACHER") && !roles.contains("ADMIN")) {
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErrorResponse("Access denied. Only teachers and admins can update code versions."));
         }

@@ -463,7 +463,7 @@ public class SolutionController {
             
             // Authorization check: Only solution owner, teachers, or admins can update
             boolean isOwner = currentUserId.equals(solutionOwnerId);
-            boolean isTeacherOrAdmin = roles.contains("TEACHER") || roles.contains("ADMIN");
+            boolean isTeacherOrAdmin = roles.contains("ROLE_TEACHER") || roles.contains("ROLE_ADMIN");
             
             if (!isOwner && !isTeacherOrAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -579,7 +579,7 @@ public class SolutionController {
             
             // Authorization check: Only solution owner, teachers, or admins can submit
             boolean isOwner = currentUserId.equals(solutionOwnerId);
-            boolean isTeacherOrAdmin = roles.contains("TEACHER") || roles.contains("ADMIN");
+            boolean isTeacherOrAdmin = roles.contains("ROLE_TEACHER") || roles.contains("ROLE_ADMIN");
             
             if (!isOwner && !isTeacherOrAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
