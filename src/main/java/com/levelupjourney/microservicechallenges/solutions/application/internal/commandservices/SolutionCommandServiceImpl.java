@@ -78,7 +78,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         var existingSolution = solution.get();
         log.info("✅ Solution found:");
         log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id());
-        log.info("  - Current status: '{}'", existingSolution.getDetails().getStatus());
+        log.info("  - Current status: '{}'", existingSolution.getStatus());
 
         try {
             // 2. Get code version details (language + tests) through ACL
@@ -226,21 +226,75 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         }
     }
 
+
+    /**
+     * Handles the UpdateSolutionCommand to modify a solution's code.
+     * 
+     * <p>This handler follows CQRS principles by separating command execution
+     * from query logic. It performs the following steps:</p>
+     * 
+     * <ol>
+     *   <li>Validate that the solution exists (query side)</li>
+     *   <li>Retrieve the solution aggregate from repository</li>
+     *   <li>Delegate business logic to the aggregate's domain method</li>
+     *   <li>Persist the updated aggregate state</li>
+     * </ol>
+     * 
+     * <h3>Business Rules Enforced:</h3>
+     * <ul>
+     *   <li>Solution must exist (throws exception if not found)</li>
+     *   <li>Code update is delegated to Solution aggregate (domain logic)</li>
+     *   <li>Transaction boundaries ensure consistency</li>
+     * </ul>
+     * 
+     * <h3>Domain Events:</h3>
+     * <p>This operation may trigger domain events (if implemented):</p>
+     * <ul>
+     *   <li>SolutionCodeUpdatedEvent - when code is successfully changed</li>
+     * </ul>
+     * 
+     * @param command The validated command containing solution ID and new code
+     * @throws IllegalArgumentException if solution is not found
+     * @throws IllegalStateException if solution is in a state that prevents updates
+     * 
+     * @see UpdateSolutionCommand
+     * @see com.levelupjourney.microservicechallenges.solutions.domain.model.aggregates.Solution#updateCode(String)
+     */
     @Override
     @Transactional
     public void handle(UpdateSolutionCommand command) {
-        var solution = solutionQueryService.handle(
-                new GetSolutionByIdQuery(command.solutionId())
-        );
+        try {
+            // Step 1: Query for solution existence (CQRS: using query service)
+            var query = new GetSolutionByIdQuery(command.solutionId());
+            var solutionOptional = solutionQueryService.handle(query);
 
-        if (solution.isEmpty()) {
-            throw new IllegalArgumentException("Solution not found: " + command.solutionId().id());
+            // Step 2: Validate solution exists
+            if (solutionOptional.isEmpty()) {
+                throw new IllegalArgumentException(
+                    String.format("Solution not found with ID: %s", command.solutionId().id())
+                );
+            }
+            
+            var solution = solutionOptional.get();
+            
+            // Step 3: Delegate to aggregate's domain method
+            solution.updateCode(command.code());
+            
+            // Step 4: Persist the aggregate
+            solutionRepository.save(solution);
+            
+            
+        } catch (IllegalArgumentException e) {
+            throw e; // Re-throw to be handled by controller
+            
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                String.format("Failed to update solution: %s", e.getMessage()), 
+                e
+            );
         }
-
-        var existingSolution = solution.get();
-        existingSolution.updateSolution(command.code(), command.language());
-        solutionRepository.save(existingSolution);
     }
+
 
     /**
      * Calculate the score earned based on test results.
