@@ -13,12 +13,11 @@ public class CreateSolutionCommandFromResourceAssembler {
     public static CreateSolutionCommand toCommandFromResource(
             String challengeId, 
             String codeVersionId, 
-            CreateSolutionResource resource, 
-            String studentId) {
+            CreateSolutionResource resource) {
         return new CreateSolutionCommand(
             new ChallengeId(UUID.fromString(challengeId)),
             new CodeVersionId(UUID.fromString(codeVersionId)),
-            new StudentId(UUID.fromString(studentId)),
+            new StudentId(UUID.fromString(resource.studentId())),
             resource.code()
         );
     }

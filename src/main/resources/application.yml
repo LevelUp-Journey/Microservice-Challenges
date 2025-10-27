@@ -6,7 +6,7 @@ spring:
     hikari:
       auto-commit: false
     url: jdbc:postgresql://localhost:5432/challenges_microservice
-    username: admin
+    username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
 

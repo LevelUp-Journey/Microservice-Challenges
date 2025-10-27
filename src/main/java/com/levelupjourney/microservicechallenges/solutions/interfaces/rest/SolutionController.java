@@ -14,7 +14,6 @@ import com.levelupjourney.microservicechallenges.solutions.domain.services.Solut
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resources.ErrorResponse;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.transform.*;
-import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,16 +38,13 @@ public class SolutionController {
     private final SolutionCommandService solutionCommandService;
     private final SolutionQueryService solutionQueryService;
     private final CodeVersionQueryService codeVersionQueryService;
-    private final JwtUtil jwtUtil;
 
     public SolutionController(SolutionCommandService solutionCommandService,
                               SolutionQueryService solutionQueryService,
-                              CodeVersionQueryService codeVersionQueryService,
-                              JwtUtil jwtUtil) {
+                              CodeVersionQueryService codeVersionQueryService) {
         this.solutionCommandService = solutionCommandService;
         this.solutionQueryService = solutionQueryService;
         this.codeVersionQueryService = codeVersionQueryService;
-        this.jwtUtil = jwtUtil;
     }
 
     // Create a new solution for a challenge's code version
@@ -89,16 +85,13 @@ public class SolutionController {
     public ResponseEntity<?> createSolution(
             @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
             @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @RequestBody CreateSolutionResource resource) {
         try {
-            // Extract studentId from JWT token
-            String studentId = jwtUtil.extractUserId(authorizationHeader);
-            
             // Check if solution already exists for this student and code version
             var existingQuery = new GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery(
                     new ChallengeId(UUID.fromString(challengeId)),
                     new CodeVersionId(UUID.fromString(codeVersionId)),
-                    new StudentId(UUID.fromString(studentId))
+                    new StudentId(UUID.fromString(resource.studentId()))
             );
             
             var existingSolution = solutionQueryService.handle(existingQuery);
@@ -107,7 +100,7 @@ public class SolutionController {
                         .body(new ErrorResponse("You already have a solution for this challenge code version. Use PUT to update it."));
             }
             
-            // Get code version to retrieve default code
+            // Get code version to validate it exists
             var codeVersionQuery = new GetCodeVersionByIdQuery(
                     new com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId(
                             UUID.fromString(codeVersionId)
@@ -120,15 +113,9 @@ public class SolutionController {
                         .body(new ErrorResponse("Code version not found with id: " + codeVersionId));
             }
             
-            var codeVersion = codeVersionOpt.get();
-            String defaultCode = codeVersion.getInitialCode() != null ? codeVersion.getInitialCode() : "";
-            
-            // Create solution resource with default code
-            var resource = new CreateSolutionResource(defaultCode);
-            
-            // Transform resource to domain command with IDs from path
+            // Transform resource to domain command with IDs from path and resource
             var command = CreateSolutionCommandFromResourceAssembler.toCommandFromResource(
-                challengeId, codeVersionId, resource, studentId);
+                challengeId, codeVersionId, resource);
 
             // Execute command through domain service
             var solution = solutionCommandService.handle(command);
@@ -199,12 +186,12 @@ public class SolutionController {
         }
     }
 
-    // Get solution by challenge, code version and student (from token)
-    // GET /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/solutions
-    @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/solutions")
+    // Get solution by challenge, code version and student
+    // GET /api/v1/challenges/{challengeId}/code-versions/{codeVersionId}/students/{studentId}/solutions
+    @GetMapping("/challenges/{challengeId}/code-versions/{codeVersionId}/students/{studentId}/solutions")
     @Operation(
         summary = "Get student's solution", 
-        description = "Retrieve the authenticated student's solution for a specific code version. The student ID is extracted from the JWT token. Requires authentication."
+        description = "Retrieve a solution for a specific student, challenge, and code version."
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -221,22 +208,14 @@ public class SolutionController {
             responseCode = "400", 
             description = "Invalid ID format",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
-        ),
-        @ApiResponse(
-            responseCode = "401", 
-            description = "Unauthorized - JWT token required",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
         )
     })
     public ResponseEntity<?> getSolutionByContext(
             @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
             @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @Parameter(description = "UUID of the student") @PathVariable String studentId) {
 
         try {
-            // Extract studentId from JWT token (student's own solution)
-            String studentId = jwtUtil.extractUserId(authorizationHeader);
-
             // Transform path variables to domain query
             var query = new GetSolutionByChallengeIdAndCodeVersionIdAndStudentIdQuery(
                     new ChallengeId(UUID.fromString(challengeId)),
@@ -526,14 +505,9 @@ public class SolutionController {
         )
     })
     public ResponseEntity<?> submitSolution(
-            @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @Parameter(description = "UUID of the solution") @PathVariable String solutionId) {
         try {
-            // Extract userId and roles from JWT token
-            String currentUserId = jwtUtil.extractUserId(authorizationHeader);
-            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-            
-            // Get the solution to verify ownership
+            // Get the solution to verify it exists
             var solutionQuery = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
             var solutionOptional = solutionQueryService.handle(solutionQuery);
             
@@ -543,25 +517,16 @@ public class SolutionController {
             }
             
             var solution = solutionOptional.get();
-            String solutionOwnerId = solution.getStudentId().id().toString();
-            
-            // Authorization check: Only solution owner, teachers, or admins can submit
-            boolean isOwner = currentUserId.equals(solutionOwnerId);
-            boolean isTeacherOrAdmin = roles.contains("TEACHER") || roles.contains("ADMIN");
-            
-            if (!isOwner && !isTeacherOrAdmin) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ErrorResponse("Access denied. Only the solution owner, teachers, or admins can submit this solution for evaluation."));
-            }
             
             // Get the code from the solution
             String code = solution.getCode();
+            String studentId = solution.getStudentId().id().toString();
             
-            // Transform to domain command using solution's code
+            // Transform to domain command using solution's code and studentId
             var command = SubmitSolutionCommandFromResourceAssembler.toCommandFromResource(
                 solutionId, 
                 code, 
-                currentUserId
+                studentId
             );
 
             // Execute command through domain service

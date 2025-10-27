@@ -3,14 +3,12 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetPublishedChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
-import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,14 +29,11 @@ public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
-    private final JwtUtil jwtUtil;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
-                               ChallengeQueryService challengeQueryService,
-                               JwtUtil jwtUtil) {
+                               ChallengeQueryService challengeQueryService) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
-        this.jwtUtil = jwtUtil;
     }
 
     // Create a new challenge
@@ -49,13 +44,9 @@ public class ChallengeController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<ChallengeResource> createChallenge(
-            @RequestBody CreateChallengeResource resource,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        // Extract teacherId from JWT token
-        String teacherId = jwtUtil.extractUserId(authorizationHeader);
-        
-        // Transform resource to domain command with teacherId from token
-        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
+            @RequestBody CreateChallengeResource resource) {
+        // Transform resource to domain command with teacherId from request
+        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
 
         // Execute command through domain service
         var challengeId = challengeCommandService.handle(command);
@@ -83,8 +74,7 @@ public class ChallengeController {
         @ApiResponse(responseCode = "404", description = "Challenge not found")
     })
     public ResponseEntity<?> getChallengeById(
-            @PathVariable String challengeId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @PathVariable String challengeId) {
         
         // Transform path variable to domain query
         var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
@@ -99,18 +89,6 @@ public class ChallengeController {
         }
 
         var challenge = challengeOptional.get();
-        
-        // Validate access based on challenge status
-        if (challenge.getStatus() != com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED) {
-            // Challenge is DRAFT or HIDDEN - only owner can access
-            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
-            String challengeOwnerId = challenge.getTeacherId().id().toString();
-            
-            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. This challenge is not published and you are not the owner."));
-            }
-        }
         
         // Transform domain entity to response resource
         var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge);
@@ -144,24 +122,11 @@ public class ChallengeController {
         @ApiResponse(responseCode = "200", description = "Challenges retrieved successfully")
     })
     public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(
-            @PathVariable String teacherId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @PathVariable String teacherId) {
         
-        // Extract user roles from JWT token
-        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        
-        // Determine which query to use based on user role
-        List<com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge> challenges;
-        
-        if (roles.contains("ROLE_STUDENT")) {
-            // Students can only see PUBLISHED challenges
-            var query = new GetPublishedChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
-            challenges = challengeQueryService.handle(query);
-        } else {
-            // Teachers and Admins can see all challenges (DRAFT and PUBLISHED)
-            var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
-            challenges = challengeQueryService.handle(query);
-        }
+        // Return all challenges for the teacher (no role-based filtering without authentication)
+        var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
+        var challenges = challengeQueryService.handle(query);
 
         // Transform domain entities to response resources
         var challengeResources = challenges.stream()
@@ -188,29 +153,15 @@ public class ChallengeController {
     })
     public ResponseEntity<?> updateChallenge(
             @PathVariable String challengeId,
-            @RequestBody UpdateChallengeResource resource,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @RequestBody UpdateChallengeResource resource) {
         try {
-            // Extract userId from JWT token
-            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
-            
-            // Retrieve the challenge to verify ownership
+            // Retrieve the challenge to verify it exists
             var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
             var challengeOptional = challengeQueryService.handle(getChallengeQuery);
             
             if (challengeOptional.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponse("Challenge not found with id: " + challengeId));
-            }
-            
-            var challenge = challengeOptional.get();
-            
-            // Verify ownership: Only the teacher who created the challenge can update it
-            String challengeOwnerId = challenge.getTeacherId().id().toString();
-            
-            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("You are not authorized to update this challenge. Only the challenge owner can make updates."));
             }
             
             // Transform resource to domain command
@@ -250,29 +201,15 @@ public class ChallengeController {
         @ApiResponse(responseCode = "404", description = "Challenge not found")
     })
     public ResponseEntity<?> deleteChallenge(
-            @PathVariable String challengeId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @PathVariable String challengeId) {
         try {
-            // Extract userId from JWT token
-            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
-            
-            // Retrieve the challenge to verify ownership
+            // Retrieve the challenge to verify it exists
             var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
             var challengeOptional = challengeQueryService.handle(getChallengeQuery);
             
             if (challengeOptional.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponse("Challenge not found with id: " + challengeId));
-            }
-            
-            var challenge = challengeOptional.get();
-            
-            // Verify ownership: Only the teacher who created the challenge can delete it
-            String challengeOwnerId = challenge.getTeacherId().id().toString();
-            
-            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("You are not authorized to delete this challenge. Only the challenge owner can delete it."));
             }
             
             // Transform to domain command
