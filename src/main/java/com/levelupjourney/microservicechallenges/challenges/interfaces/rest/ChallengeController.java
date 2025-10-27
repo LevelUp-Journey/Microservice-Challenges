@@ -47,9 +47,11 @@ public class ChallengeController {
 
     // Create a new challenge
     @PostMapping
-    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Teacher ID extracted from JWT token.")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Only accessible by TEACHER and ADMIN roles. Teacher ID extracted from JWT token.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Challenge created successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<ChallengeResource> createChallenge(
