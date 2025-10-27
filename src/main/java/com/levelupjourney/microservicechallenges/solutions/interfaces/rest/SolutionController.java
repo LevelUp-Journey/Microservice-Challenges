@@ -22,7 +22,9 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +36,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(value = "/api/v1", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Solutions", description = "Endpoints for managing student solutions and challenge attempts")
+@SecurityRequirement(name = "bearerAuth")
 public class SolutionController {
 
     private final SolutionCommandService solutionCommandService;
@@ -89,9 +92,10 @@ public class SolutionController {
     public ResponseEntity<?> createSolution(
             @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
             @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
         try {
             // Extract studentId from JWT token
+            String authorizationHeader = request.getHeader("Authorization");
             String studentId = jwtUtil.extractUserId(authorizationHeader);
             
             // Check if solution already exists for this student and code version
@@ -231,10 +235,11 @@ public class SolutionController {
     public ResponseEntity<?> getSolutionByContext(
             @Parameter(description = "UUID of the challenge") @PathVariable String challengeId,
             @Parameter(description = "UUID of the code version") @PathVariable String codeVersionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
 
         try {
             // Extract studentId from JWT token (student's own solution)
+            String authorizationHeader = request.getHeader("Authorization");
             String studentId = jwtUtil.extractUserId(authorizationHeader);
 
             // Transform path variables to domain query
@@ -435,9 +440,35 @@ public class SolutionController {
             ) 
             @PathVariable String solutionId,
             
-            @RequestBody @jakarta.validation.Valid UpdateSolutionResource resource) {
+            @RequestBody @jakarta.validation.Valid UpdateSolutionResource resource,
+            HttpServletRequest request) {
         
         try {
+            // Extract userId and roles from JWT token
+            String authorizationHeader = request.getHeader("Authorization");
+            String currentUserId = jwtUtil.extractUserId(authorizationHeader);
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            
+            // Get the solution to verify ownership
+            var solutionQuery = new GetSolutionByIdQuery(new SolutionId(UUID.fromString(solutionId)));
+            var solutionOptional = solutionQueryService.handle(solutionQuery);
+            
+            if (solutionOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Solution not found: " + solutionId));
+            }
+            
+            var solution = solutionOptional.get();
+            String solutionOwnerId = solution.getStudentId().id().toString();
+            
+            // Authorization check: Only solution owner, teachers, or admins can update
+            boolean isOwner = currentUserId.equals(solutionOwnerId);
+            boolean isTeacherOrAdmin = roles.contains("ROLE_TEACHER") || roles.contains("ROLE_ADMIN");
+            
+            if (!isOwner && !isTeacherOrAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only the solution owner, teachers, or admins can update this solution."));
+            }
 
             // Step 1: Transform REST resource to Domain command (Anti-Corruption Layer)
             var command = UpdateSolutionCommandFromResourceAssembler.toCommandFromResource(
@@ -451,12 +482,12 @@ public class SolutionController {
 
             // Step 3: Retrieve updated solution for response
             var query = new GetSolutionByIdQuery(command.solutionId());
-            var solutionOptional = solutionQueryService.handle(query);
+            var updatedSolutionOptional = solutionQueryService.handle(query);
 
             // Step 4: Transform domain entity to REST resource
-            if (solutionOptional.isPresent()) {
+            if (updatedSolutionOptional.isPresent()) {
                 var solutionResource = SolutionResourceFromEntityAssembler.toResourceFromEntity(
-                    solutionOptional.get()
+                    updatedSolutionOptional.get()
                 );
                 return ResponseEntity.ok(solutionResource);
             }
@@ -527,9 +558,10 @@ public class SolutionController {
     })
     public ResponseEntity<?> submitSolution(
             @Parameter(description = "UUID of the solution") @PathVariable String solutionId,
-            @Parameter(description = "JWT Bearer token") @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
         try {
             // Extract userId and roles from JWT token
+            String authorizationHeader = request.getHeader("Authorization");
             String currentUserId = jwtUtil.extractUserId(authorizationHeader);
             List<String> roles = jwtUtil.extractRoles(authorizationHeader);
             
@@ -547,7 +579,7 @@ public class SolutionController {
             
             // Authorization check: Only solution owner, teachers, or admins can submit
             boolean isOwner = currentUserId.equals(solutionOwnerId);
-            boolean isTeacherOrAdmin = roles.contains("TEACHER") || roles.contains("ADMIN");
+            boolean isTeacherOrAdmin = roles.contains("ROLE_TEACHER") || roles.contains("ROLE_ADMIN");
             
             if (!isOwner && !isTeacherOrAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)

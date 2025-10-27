@@ -7,12 +7,15 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.AddCodeVersionResource;
-import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.CodeVersionResource;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.UpdateCodeVersionResource;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.AddCodeVersionCommandFromResourceAssembler;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.CodeVersionResourceFromEntityAssembler;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.UpdateCodeVersionCommandFromResourceAssembler;
+import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
+import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resources.ErrorResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,15 +28,19 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(value = "/api/v1/challenges/{challengeId}/code-versions", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Code Versions", description = "Endpoints for managing code versions of challenges")
+@SecurityRequirement(name = "bearerAuth")
 public class CodeVersionController {
 
     private final CodeVersionCommandService codeVersionCommandService;
     private final CodeVersionQueryService codeVersionQueryService;
+    private final JwtUtil jwtUtil;
 
     public CodeVersionController(CodeVersionCommandService codeVersionCommandService,
-                               CodeVersionQueryService codeVersionQueryService) {
+                               CodeVersionQueryService codeVersionQueryService,
+                               JwtUtil jwtUtil) {
         this.codeVersionCommandService = codeVersionCommandService;
         this.codeVersionQueryService = codeVersionQueryService;
+        this.jwtUtil = jwtUtil;
     }
 
     // Create a new code version for a challenge
@@ -44,8 +51,17 @@ public class CodeVersionController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Code version already exists for this language"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<CodeVersionResource> createCodeVersion(@PathVariable String challengeId,
-                                                                 @RequestBody AddCodeVersionResource resource) {
+    public ResponseEntity<?> createCodeVersion(@PathVariable String challengeId,
+                                                                 @RequestBody AddCodeVersionResource resource,
+                                                                 HttpServletRequest request) {
+        // Extract user roles from JWT token - only teachers can create code versions
+        String authorizationHeader = request.getHeader("Authorization");
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. Only teachers and admins can create code versions."));
+        }
+        
         // Transform resource to domain command with challengeId from path (overriding path parameter)
         var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode(), resource.functionName());
         var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resourceWithChallenge);
@@ -73,8 +89,17 @@ public class CodeVersionController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version retrieved successfully"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
     })
-    public ResponseEntity<CodeVersionResource> getCodeVersionById(@PathVariable String challengeId,
-                                                                  @PathVariable String codeVersionId) {
+    public ResponseEntity<?> getCodeVersionById(@PathVariable String challengeId,
+                                                                  @PathVariable String codeVersionId,
+                                                                  HttpServletRequest request) {
+        // Extract user roles from JWT token - only teachers can access code versions
+        String authorizationHeader = request.getHeader("Authorization");
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
+        }
+        
         // Transform path variables to domain query
         var query = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
         
@@ -96,7 +121,16 @@ public class CodeVersionController {
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code versions retrieved successfully")
     })
-    public ResponseEntity<List<CodeVersionResource>> getCodeVersionsByChallenge(@PathVariable String challengeId) {
+    public ResponseEntity<?> getCodeVersionsByChallenge(@PathVariable String challengeId,
+                                                                                 HttpServletRequest request) {
+        // Extract user roles from JWT token - only teachers can access code versions
+        String authorizationHeader = request.getHeader("Authorization");
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
+        }
+        
         // Transform path variable to domain query
         var query = new GetCodeVersionsByChallengeIdQuery(new ChallengeId(UUID.fromString(challengeId)));
         
@@ -118,9 +152,18 @@ public class CodeVersionController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version updated successfully"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
     })
-    public ResponseEntity<CodeVersionResource> updateCodeVersion(@PathVariable String challengeId,
+    public ResponseEntity<?> updateCodeVersion(@PathVariable String challengeId,
                                                                @PathVariable String codeVersionId,
-                                                               @RequestBody UpdateCodeVersionResource resource) {
+                                                               @RequestBody UpdateCodeVersionResource resource,
+                                                               HttpServletRequest request) {
+        // Extract user roles from JWT token - only teachers can update code versions
+        String authorizationHeader = request.getHeader("Authorization");
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. Only teachers and admins can update code versions."));
+        }
+        
         // Transform resource to domain command
         var command = UpdateCodeVersionCommandFromResourceAssembler.toCommandFromResource(codeVersionId, resource);
         

@@ -11,6 +11,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.services.Chal
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,8 +19,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(value = "/api/v1/challenges", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Challenges", description = "Endpoints for managing coding challenges")
+@SecurityRequirement(name = "bearerAuth")
 public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
@@ -43,14 +47,18 @@ public class ChallengeController {
 
     // Create a new challenge
     @PostMapping
-    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Teacher ID extracted from JWT token.")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Only accessible by TEACHER and ADMIN roles. Teacher ID extracted from JWT token.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Challenge created successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<ChallengeResource> createChallenge(
             @RequestBody CreateChallengeResource resource,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
+        // Extract Authorization header from request
+        String authorizationHeader = request.getHeader("Authorization");
         // Extract teacherId from JWT token
         String teacherId = jwtUtil.extractUserId(authorizationHeader);
         
@@ -84,7 +92,10 @@ public class ChallengeController {
     })
     public ResponseEntity<?> getChallengeById(
             @PathVariable String challengeId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
+        
+        // Extract Authorization header from request
+        String authorizationHeader = request.getHeader("Authorization");
         
         // Transform path variable to domain query
         var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
@@ -145,7 +156,10 @@ public class ChallengeController {
     })
     public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(
             @PathVariable String teacherId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
+        
+        // Extract Authorization header from request
+        String authorizationHeader = request.getHeader("Authorization");
         
         // Extract user roles from JWT token
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
@@ -189,8 +203,11 @@ public class ChallengeController {
     public ResponseEntity<?> updateChallenge(
             @PathVariable String challengeId,
             @RequestBody UpdateChallengeResource resource,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
         try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            
             // Extract userId from JWT token
             String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
             
@@ -251,8 +268,11 @@ public class ChallengeController {
     })
     public ResponseEntity<?> deleteChallenge(
             @PathVariable String challengeId,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            HttpServletRequest request) {
         try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            
             // Extract userId from JWT token
             String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
             
