@@ -8,6 +8,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
+import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
@@ -35,13 +36,16 @@ public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
+    private final CodeVersionQueryService codeVersionQueryService;
     private final JwtUtil jwtUtil;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
                                ChallengeQueryService challengeQueryService,
+                               CodeVersionQueryService codeVersionQueryService,
                                JwtUtil jwtUtil) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
+        this.codeVersionQueryService = codeVersionQueryService;
         this.jwtUtil = jwtUtil;
     }
 
@@ -311,6 +315,5 @@ public class ChallengeController {
         }
     }
     
-    // Simple error response record for consistent error handling
     private record ErrorResponse(String message) {}
 }

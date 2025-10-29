@@ -30,4 +30,7 @@ public interface CodeVersionRepository extends JpaRepository<CodeVersion, CodeVe
     // Count code versions for a challenge using clean method name
     @Query("SELECT COUNT(cv) FROM CodeVersion cv WHERE cv.challengeId.id = :challengeId")
     long countByChallengeId(@Param("challengeId") UUID challengeId);
+    // Batch fetch code versions for many challenges in a single query
+    @Query("SELECT cv FROM CodeVersion cv WHERE cv.challengeId.id IN :challengeIds")
+    List<CodeVersion> findByChallengeIdIn(@Param("challengeIds") List<UUID> challengeIds);
 }
