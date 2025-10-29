@@ -2,7 +2,6 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdQuery;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionCommandService;
@@ -15,9 +14,6 @@ import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.tran
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resources.ErrorResponse;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -186,101 +182,6 @@ public class CodeVersionController {
         }
         
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    /**
-     * Batch endpoint: fetch code versions for multiple challenges in one request
-     * Note: This endpoint ignores the {challengeId} path parameter and accepts multiple challenge IDs in the body
-     */
-    @PostMapping("/batch")
-    @Operation(
-        summary = "Get code versions for multiple challenges", 
-        description = "Provide a list of challenge UUIDs in the request body and retrieve all code versions grouped by challenge. The {challengeId} path parameter is ignored for this endpoint. Only accessible by teachers and admins."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200", 
-            description = "Code versions retrieved successfully. Returns a map where keys are challenge IDs and values are lists of code versions."
-        ),
-        @ApiResponse(
-            responseCode = "400", 
-            description = "Invalid request: null/empty challenge IDs or invalid UUID format"
-        ),
-        @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - Only teachers and admins can access code versions"
-        ),
-        @ApiResponse(
-            responseCode = "500", 
-            description = "Internal server error"
-        )
-    })
-    public ResponseEntity<?> getCodeVersionsForChallenges(
-            @PathVariable String challengeId, // Path parameter required but ignored for batch operation
-            @RequestBody List<String> challengeIds,
-            HttpServletRequest request) {
-        
-        try {
-            // Step 1: Authorization check - only teachers and admins
-            String authorizationHeader = request.getHeader("Authorization");
-            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-            
-            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
-            }
-
-            // Step 2: Validate input
-            if (challengeIds == null || challengeIds.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse("challengeIds request body cannot be null or empty"));
-            }
-
-            // Step 3: Transform String IDs to domain value objects with validation
-            List<ChallengeId> challengeIdVOs = challengeIds.stream()
-                    .filter(id -> id != null && !id.isBlank())
-                    .map(id -> {
-                        try {
-                            return new ChallengeId(UUID.fromString(id.trim()));
-                        } catch (IllegalArgumentException e) {
-                            throw new IllegalArgumentException("Invalid UUID format for challenge ID: " + id);
-                        }
-                    })
-                    .toList();
-
-            if (challengeIdVOs.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse("No valid challenge IDs provided"));
-            }
-
-            // Step 4: Execute batch query using domain query service
-            var query = new GetCodeVersionsByChallengeIdsQuery(challengeIdVOs);
-            var codeVersions = codeVersionQueryService.handle(query);
-
-            // Step 5: Group by challenge ID and transform to resources
-            var grouped = codeVersions.stream()
-                    .collect(Collectors.groupingBy(
-                            cv -> cv.getChallengeId().id().toString(),
-                            Collectors.mapping(
-                                CodeVersionResourceFromEntityAssembler::toResourceFromEntity,
-                                Collectors.toList()
-                            )
-                    ));
-
-            // Step 6: Ensure all requested IDs are present in response (empty list if no versions found)
-            for (ChallengeId cid : challengeIdVOs) {
-                grouped.putIfAbsent(cid.id().toString(), List.of());
-            }
-
-            return ResponseEntity.ok(grouped);
-            
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse("Invalid UUID in request: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("Failed to fetch code versions: " + e.getMessage()));
-        }
     }
 
 }
