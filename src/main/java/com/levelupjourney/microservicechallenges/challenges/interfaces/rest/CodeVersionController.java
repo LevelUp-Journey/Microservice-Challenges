@@ -2,6 +2,7 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionCommandService;
@@ -187,49 +188,98 @@ public class CodeVersionController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-      // Simple error response record for consistent error handling
-    // Batch endpoint: fetch code versions for multiple challenges in one request
-    @PostMapping("/code-versions/batch")
-    @Operation(summary = "Get code versions for multiple challenges", description = "Provide a list of challenge UUIDs and retrieve all code versions grouped by challenge.")
+    /**
+     * Batch endpoint: fetch code versions for multiple challenges in one request
+     * Note: This endpoint ignores the {challengeId} path parameter and accepts multiple challenge IDs in the body
+     */
+    @PostMapping("/batch")
+    @Operation(
+        summary = "Get code versions for multiple challenges", 
+        description = "Provide a list of challenge UUIDs in the request body and retrieve all code versions grouped by challenge. The {challengeId} path parameter is ignored for this endpoint. Only accessible by teachers and admins."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Code versions retrieved successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request or UUID format"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+        @ApiResponse(
+            responseCode = "200", 
+            description = "Code versions retrieved successfully. Returns a map where keys are challenge IDs and values are lists of code versions."
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Invalid request: null/empty challenge IDs or invalid UUID format"
+        ),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - Only teachers and admins can access code versions"
+        ),
+        @ApiResponse(
+            responseCode = "500", 
+            description = "Internal server error"
+        )
     })
-    public ResponseEntity<?> getCodeVersionsForChallenges(@RequestBody List<String> challengeIds) {
+    public ResponseEntity<?> getCodeVersionsForChallenges(
+            @PathVariable String challengeId, // Path parameter required but ignored for batch operation
+            @RequestBody List<String> challengeIds,
+            HttpServletRequest request) {
+        
         try {
-            if (challengeIds == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse("challengeIds request body cannot be null"));
+            // Step 1: Authorization check - only teachers and admins
+            String authorizationHeader = request.getHeader("Authorization");
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            
+            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
             }
 
-            var challengeIdVOs = challengeIds.stream()
+            // Step 2: Validate input
+            if (challengeIds == null || challengeIds.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("challengeIds request body cannot be null or empty"));
+            }
+
+            // Step 3: Transform String IDs to domain value objects with validation
+            List<ChallengeId> challengeIdVOs = challengeIds.stream()
                     .filter(id -> id != null && !id.isBlank())
-                    .map(id -> new ChallengeId(UUID.fromString(id.trim())))
+                    .map(id -> {
+                        try {
+                            return new ChallengeId(UUID.fromString(id.trim()));
+                        } catch (IllegalArgumentException e) {
+                            throw new IllegalArgumentException("Invalid UUID format for challenge ID: " + id);
+                        }
+                    })
                     .toList();
 
-            // Execute batch query using the CodeVersionQueryService
-            var query = new GetCodeVersionsByChallengeIdsQuery(challengeIdVOs);
-            var codeVersions = this.codeVersionQueryService.handle(query);
+            if (challengeIdVOs.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("No valid challenge IDs provided"));
+            }
 
-            // Group by challenge id and convert to resources
+            // Step 4: Execute batch query using domain query service
+            var query = new GetCodeVersionsByChallengeIdsQuery(challengeIdVOs);
+            var codeVersions = codeVersionQueryService.handle(query);
+
+            // Step 5: Group by challenge ID and transform to resources
             var grouped = codeVersions.stream()
                     .collect(Collectors.groupingBy(
                             cv -> cv.getChallengeId().id().toString(),
-                            Collectors.mapping(com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.CodeVersionResourceFromEntityAssembler::toResourceFromEntity,
-                                    Collectors.toList())
+                            Collectors.mapping(
+                                CodeVersionResourceFromEntityAssembler::toResourceFromEntity,
+                                Collectors.toList()
+                            )
                     ));
 
-            // Ensure all requested IDs are present in the map (empty list if none)
-            for (var cid : challengeIdVOs) {
+            // Step 6: Ensure all requested IDs are present in response (empty list if no versions found)
+            for (ChallengeId cid : challengeIdVOs) {
                 grouped.putIfAbsent(cid.id().toString(), List.of());
             }
 
             return ResponseEntity.ok(grouped);
+            
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("Invalid UUID in request: " + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("Invalid UUID in request: " + e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Failed to fetch code versions: " + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Failed to fetch code versions: " + e.getMessage()));
         }
     }
 
