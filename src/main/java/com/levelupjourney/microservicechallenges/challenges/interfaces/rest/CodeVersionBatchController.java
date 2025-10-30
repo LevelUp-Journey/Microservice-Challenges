@@ -258,7 +258,7 @@ public class CodeVersionBatchController {
         )
     })
     public ResponseEntity<?> getCodeVersionsForChallenges(
-            @org.springframework.web.bind.annotation.RequestBody List<String> challengeIds,
+            @RequestBody List<String> challengeIds,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         
         try {
