@@ -126,10 +126,10 @@ public class CodeVersionTestController {
         // Extract user roles from JWT token - only teachers can access tests
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can access tests."));
-        }
+//        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(new ErrorResponse("Access denied. Only teachers and admins can access tests."));
+//        }
         
         // Execute query through domain service
         var tests = codeVersionTestQueryService.getCodeVersionTestsByCodeVersionId(
@@ -158,10 +158,10 @@ public class CodeVersionTestController {
         // Extract user roles from JWT token - only teachers can update tests
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can update tests."));
-        }
+//        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(new ErrorResponse("Access denied. Only teachers and admins can update tests."));
+//        }
         
         // Transform resource to domain command
         var command = UpdateCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(testId, resource);
