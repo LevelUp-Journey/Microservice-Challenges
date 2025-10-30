@@ -14,6 +14,9 @@ import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.tran
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resources.ErrorResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,10 +88,10 @@ public class CodeVersionController {
 
     // Get code version by ID
     @GetMapping("/{codeVersionId}")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Get code version by ID", description = "Retrieve a specific code version including its function name.")
-    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version retrieved successfully"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
+    @Operation(summary = "Get code version by ID", description = "Retrieve a specific code version including its function name.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Code version retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Code version not found")
     })
     public ResponseEntity<?> getCodeVersionById(@PathVariable String challengeId,
                                                                   @PathVariable String codeVersionId,
@@ -96,10 +99,10 @@ public class CodeVersionController {
         // Extract user roles from JWT token - only teachers can access code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
-        }
+//        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
+//        }
         
         // Transform path variables to domain query
         var query = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
@@ -118,19 +121,19 @@ public class CodeVersionController {
 
     // Get all code versions for a challenge
     @GetMapping
-    @io.swagger.v3.oas.annotations.Operation(summary = "Get all code versions", description = "Retrieve all code versions for a specific challenge.")
-    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code versions retrieved successfully")
+    @Operation(summary = "Get all code versions", description = "Retrieve all code versions for a specific challenge.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Code versions retrieved successfully")
     })
     public ResponseEntity<?> getCodeVersionsByChallenge(@PathVariable String challengeId,
                                                                                  HttpServletRequest request) {
         // Extract user roles from JWT token - only teachers can access code versions
         String authorizationHeader = request.getHeader("Authorization");
         List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
-        }
+//        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
+//        }
         
         // Transform path variable to domain query
         var query = new GetCodeVersionsByChallengeIdQuery(new ChallengeId(UUID.fromString(challengeId)));
