@@ -3,11 +3,17 @@ package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
+import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.ChallengeCodeVersionsResource;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.CodeVersionResourceFromEntityAssembler;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.rest.resources.ErrorResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,7 +24,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -47,33 +55,169 @@ public class CodeVersionBatchController {
      * 
      * @param challengeIds List of challenge UUIDs to fetch code versions for
      * @param request HTTP request to extract authorization header
-     * @return Map of challenge IDs to their code versions, grouped by challenge
+     * @return List of ChallengeCodeVersionsResource objects, each containing a challengeId and its code versions
      */
     @PostMapping("/batch")
     @Operation(
         summary = "Get code versions for multiple challenges", 
-        description = "Provide a list of challenge UUIDs in the request body and retrieve all code versions grouped by challenge. Only accessible by teachers and admins."
+        description = """
+            Fetch code versions for multiple challenges in a single request.
+            
+            **Authorization:** Only teachers and admins can access this endpoint.
+            
+            **Request Body:** Array of challenge UUIDs (strings)
+            
+            **Response:** Array of objects, each containing:
+            - `challengeId`: The UUID of the challenge
+            - `codeVersions`: Array of code versions for that challenge (empty if none exist)
+            
+            **Use Cases:**
+            - Bulk loading code versions for multiple challenges
+            - Efficient data fetching for challenge listings
+            - Reducing API calls when displaying multiple challenges with their code versions
+            """,
+        requestBody = @RequestBody(
+            description = "List of challenge UUIDs to fetch code versions for",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(
+                    schema = @Schema(
+                        type = "string",
+                        format = "uuid",
+                        example = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    )
+                ),
+                examples = @ExampleObject(
+                    name = "Example Request",
+                    value = """
+                        [
+                          "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                          "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                          "c3d4e5f6-a7b8-9012-cdef-012345678901"
+                        ]
+                        """,
+                    summary = "List of 3 challenge UUIDs"
+                )
+            )
+        )
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200", 
-            description = "Code versions retrieved successfully. Returns a map where keys are challenge IDs and values are lists of code versions."
+            description = "Code versions retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(
+                    schema = @Schema(implementation = ChallengeCodeVersionsResource.class)
+                ),
+                examples = @ExampleObject(
+                    name = "Successful Response",
+                    value = """
+                        [
+                          {
+                            "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                            "codeVersions": [
+                              {
+                                "id": "cv1-uuid",
+                                "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                "language": "javascript",
+                                "defaultCode": "function solve() { }",
+                                "functionName": "solve"
+                              },
+                              {
+                                "id": "cv2-uuid",
+                                "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                "language": "python",
+                                "defaultCode": "def solve():\\n    pass",
+                                "functionName": "solve"
+                              }
+                            ]
+                          },
+                          {
+                            "challengeId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                            "codeVersions": []
+                          }
+                        ]
+                        """,
+                    summary = "Array with challenge code versions"
+                )
+            )
         ),
         @ApiResponse(
             responseCode = "400", 
-            description = "Invalid request: null/empty challenge IDs or invalid UUID format"
+            description = "Bad Request - Invalid or empty challenge IDs",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                    @ExampleObject(
+                        name = "Null or Empty Body",
+                        value = """
+                            {
+                              "error": "challengeIds request body cannot be null or empty"
+                            }
+                            """,
+                        summary = "Missing request body"
+                    ),
+                    @ExampleObject(
+                        name = "Invalid UUID Format",
+                        value = """
+                            {
+                              "error": "Invalid UUID in request: Invalid UUID format for challenge ID: invalid-uuid"
+                            }
+                            """,
+                        summary = "Malformed UUID"
+                    ),
+                    @ExampleObject(
+                        name = "No Valid IDs",
+                        value = """
+                            {
+                              "error": "No valid challenge IDs provided"
+                            }
+                            """,
+                        summary = "All IDs were null or blank"
+                    )
+                }
+            )
         ),
         @ApiResponse(
             responseCode = "403",
-            description = "Forbidden - Only teachers and admins can access code versions"
+            description = "Forbidden - User lacks required permissions",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Access Denied",
+                    value = """
+                        {
+                          "error": "Access denied. Only teachers and admins can access code versions."
+                        }
+                        """,
+                    summary = "Non-teacher/admin user attempted access"
+                )
+            )
         ),
         @ApiResponse(
             responseCode = "500", 
-            description = "Internal server error"
+            description = "Internal Server Error",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Server Error",
+                    value = """
+                        {
+                          "error": "Failed to fetch code versions: Database connection error"
+                        }
+                        """,
+                    summary = "Unexpected server error"
+                )
+            )
         )
     })
     public ResponseEntity<?> getCodeVersionsForChallenges(
-            @RequestBody List<String> challengeIds,
+            @org.springframework.web.bind.annotation.RequestBody List<String> challengeIds,
             HttpServletRequest request) {
         
         try {
@@ -113,8 +257,8 @@ public class CodeVersionBatchController {
             var query = new GetCodeVersionsByChallengeIdsQuery(challengeIdVOs);
             var codeVersions = codeVersionQueryService.handle(query);
 
-            // Step 5: Group by challenge ID and transform to resources
-            var grouped = codeVersions.stream()
+            // Step 5: Group by challenge ID
+            Map<String, List<com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.CodeVersionResource>> groupedByChallenge = codeVersions.stream()
                     .collect(Collectors.groupingBy(
                             cv -> cv.getChallengeId().id().toString(),
                             Collectors.mapping(
@@ -123,12 +267,17 @@ public class CodeVersionBatchController {
                             )
                     ));
 
-            // Step 6: Ensure all requested IDs are present in response (empty list if no versions found)
+            // Step 6: Build response array maintaining the order of requested IDs
+            List<ChallengeCodeVersionsResource> response = new ArrayList<>();
             for (ChallengeId cid : challengeIdVOs) {
-                grouped.putIfAbsent(cid.id().toString(), List.of());
+                String challengeIdStr = cid.id().toString();
+                List<com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.CodeVersionResource> versions = 
+                    groupedByChallenge.getOrDefault(challengeIdStr, List.of());
+                
+                response.add(new ChallengeCodeVersionsResource(challengeIdStr, versions));
             }
 
-            return ResponseEntity.ok(grouped);
+            return ResponseEntity.ok(response);
             
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
