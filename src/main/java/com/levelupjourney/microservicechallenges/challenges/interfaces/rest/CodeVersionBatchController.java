@@ -18,7 +18,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -63,17 +62,25 @@ public class CodeVersionBatchController {
         description = """
             Fetch code versions for multiple challenges in a single request.
             
-            **Authorization:** Only teachers and admins can access this endpoint.
+            **Authorization:** Public endpoint - accessible to everyone (students, teachers, admins, anonymous users).
+            
+            **Test Visibility Rules:**
+            - **Students**: Secret tests have empty strings ("") for input, expectedOutput, customValidationCode, and failureMessage
+            - **Teachers/Admins**: Full access to all test details including secret tests
+            - **Anonymous users**: Treated as students (secret test details hidden)
             
             **Request Body:** Array of challenge UUIDs (strings)
             
             **Response:** Array of objects, each containing:
             - `challengeId`: The UUID of the challenge
             - `codeVersions`: Array of code versions for that challenge (empty if none exist)
+              - Each code version includes its `tests` array
+              - Secret tests are filtered based on user role
             
             **Use Cases:**
             - Bulk loading code versions for multiple challenges
-            - Efficient data fetching for challenge listings
+            - Students viewing available challenges and their test cases
+            - Teachers reviewing all challenge code versions with full test details
             - Reducing API calls when displaying multiple challenges with their code versions
             """,
         requestBody = @RequestBody(
@@ -105,43 +112,94 @@ public class CodeVersionBatchController {
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200", 
-            description = "Code versions retrieved successfully",
+            description = "Code versions retrieved successfully. Test details are filtered based on user role.",
             content = @Content(
                 mediaType = "application/json",
                 array = @ArraySchema(
                     schema = @Schema(implementation = ChallengeCodeVersionsResource.class)
                 ),
-                examples = @ExampleObject(
-                    name = "Successful Response",
-                    value = """
-                        [
-                          {
-                            "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                            "codeVersions": [
+                examples = {
+                    @ExampleObject(
+                        name = "Teacher/Admin Response",
+                        value = """
+                            [
                               {
-                                "id": "cv1-uuid",
                                 "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                                "language": "javascript",
-                                "defaultCode": "function solve() { }",
-                                "functionName": "solve"
-                              },
-                              {
-                                "id": "cv2-uuid",
-                                "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                                "language": "python",
-                                "defaultCode": "def solve():\\n    pass",
-                                "functionName": "solve"
+                                "codeVersions": [
+                                  {
+                                    "id": "cv1-uuid",
+                                    "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                    "language": "javascript",
+                                    "initialCode": "function solve() { }",
+                                    "functionName": "solve",
+                                    "tests": [
+                                      {
+                                        "id": "test1-uuid",
+                                        "codeVersionId": "cv1-uuid",
+                                        "input": "5",
+                                        "expectedOutput": "10",
+                                        "customValidationCode": "",
+                                        "failureMessage": "Failed test",
+                                        "isSecret": false
+                                      },
+                                      {
+                                        "id": "test2-uuid",
+                                        "codeVersionId": "cv1-uuid",
+                                        "input": "100",
+                                        "expectedOutput": "200",
+                                        "customValidationCode": "custom code",
+                                        "failureMessage": "Secret test failed",
+                                        "isSecret": true
+                                      }
+                                    ]
+                                  }
+                                ]
                               }
                             ]
-                          },
-                          {
-                            "challengeId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-                            "codeVersions": []
-                          }
-                        ]
-                        """,
-                    summary = "Array with challenge code versions"
-                )
+                            """,
+                        summary = "Full test details visible to teachers/admins"
+                    ),
+                    @ExampleObject(
+                        name = "Student Response",
+                        value = """
+                            [
+                              {
+                                "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                "codeVersions": [
+                                  {
+                                    "id": "cv1-uuid",
+                                    "challengeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                    "language": "javascript",
+                                    "initialCode": "function solve() { }",
+                                    "functionName": "solve",
+                                    "tests": [
+                                      {
+                                        "id": "test1-uuid",
+                                        "codeVersionId": "cv1-uuid",
+                                        "input": "5",
+                                        "expectedOutput": "10",
+                                        "customValidationCode": "",
+                                        "failureMessage": "Failed test",
+                                        "isSecret": false
+                                      },
+                                      {
+                                        "id": "test2-uuid",
+                                        "codeVersionId": "cv1-uuid",
+                                        "input": "",
+                                        "expectedOutput": "",
+                                        "customValidationCode": "",
+                                        "failureMessage": "",
+                                        "isSecret": true
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                            """,
+                        summary = "Secret test details hidden for students"
+                    )
+                }
             )
         ),
         @ApiResponse(
@@ -182,23 +240,6 @@ public class CodeVersionBatchController {
             )
         ),
         @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - User lacks required permissions",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class),
-                examples = @ExampleObject(
-                    name = "Access Denied",
-                    value = """
-                        {
-                          "error": "Access denied. Only teachers and admins can access code versions."
-                        }
-                        """,
-                    summary = "Non-teacher/admin user attempted access"
-                )
-            )
-        ),
-        @ApiResponse(
             responseCode = "500", 
             description = "Internal Server Error",
             content = @Content(
@@ -218,16 +259,21 @@ public class CodeVersionBatchController {
     })
     public ResponseEntity<?> getCodeVersionsForChallenges(
             @org.springframework.web.bind.annotation.RequestBody List<String> challengeIds,
-            HttpServletRequest request) {
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         
         try {
-            // Step 1: Authorization check - only teachers and admins
-            String authorizationHeader = request.getHeader("Authorization");
-            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            // Step 1: Determine if user is student (for test filtering)
+            boolean isStudent = true; // Default to student (most restrictive)
             
-            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ErrorResponse("Access denied. Only teachers and admins can access code versions."));
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                try {
+                    List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+                    // If user has TEACHER or ADMIN role, they see everything
+                    isStudent = !roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN");
+                } catch (Exception e) {
+                    // Invalid token - treat as student
+                    isStudent = true;
+                }
             }
 
             // Step 2: Validate input
@@ -257,12 +303,13 @@ public class CodeVersionBatchController {
             var query = new GetCodeVersionsByChallengeIdsQuery(challengeIdVOs);
             var codeVersions = codeVersionQueryService.handle(query);
 
-            // Step 5: Group by challenge ID
+            // Step 5: Group by challenge ID with role-based filtering
+            final boolean isStudentFinal = isStudent;
             Map<String, List<com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.CodeVersionResource>> groupedByChallenge = codeVersions.stream()
                     .collect(Collectors.groupingBy(
                             cv -> cv.getChallengeId().id().toString(),
                             Collectors.mapping(
-                                CodeVersionResourceFromEntityAssembler::toResourceFromEntity,
+                                cv -> CodeVersionResourceFromEntityAssembler.toResourceFromEntity(cv, isStudentFinal),
                                 Collectors.toList()
                             )
                     ));
