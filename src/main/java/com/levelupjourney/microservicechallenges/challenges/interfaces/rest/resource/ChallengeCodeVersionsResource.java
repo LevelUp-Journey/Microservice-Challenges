@@ -23,6 +23,6 @@ public record ChallengeCodeVersionsResource(
         description = "List of code versions for this challenge. Empty array if no code versions exist.",
         required = true
     )
-    List<CodeVersionResource> codeVersions
+    List<CodeVersionWithoutTestsResource> codeVersions
 ) {
 }
