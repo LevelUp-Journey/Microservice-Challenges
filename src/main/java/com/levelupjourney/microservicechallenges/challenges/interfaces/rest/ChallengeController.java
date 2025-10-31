@@ -55,34 +55,41 @@ public class ChallengeController {
     @Operation(summary = "Create challenge", description = "Create a new coding challenge. Only accessible by TEACHER and ADMIN roles. Teacher ID extracted from JWT token.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Challenge created successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - validation error (e.g., experience points exceed difficulty max score)"),
         @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<ChallengeResource> createChallenge(
+    public ResponseEntity<?> createChallenge(
             @RequestBody CreateChallengeResource resource,
             HttpServletRequest request) {
-        // Extract Authorization header from request
-        String authorizationHeader = request.getHeader("Authorization");
-        // Extract teacherId from JWT token
-        String teacherId = jwtUtil.extractUserId(authorizationHeader);
-        
-        // Transform resource to domain command with teacherId from token
-        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            // Extract teacherId from JWT token
+            String teacherId = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Transform resource to domain command with teacherId from token
+            var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
 
-        // Execute command through domain service
-        var challengeId = challengeCommandService.handle(command);
+            // Execute command through domain service
+            var challengeId = challengeCommandService.handle(command);
 
-        // Retrieve created challenge for response
-        var query = new GetChallengeByIdQuery(challengeId);
-        var challenge = challengeQueryService.handle(query);
+            // Retrieve created challenge for response
+            var query = new GetChallengeByIdQuery(challengeId);
+            var challenge = challengeQueryService.handle(query);
 
-        // Transform domain entity to response resource
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.CREATED);
+            // Transform domain entity to response resource
+            if (challenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+                return new ResponseEntity<>(challengeResource, HttpStatus.CREATED);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (e.g., experience points exceeding difficulty max score)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Get challenge by ID
@@ -200,9 +207,9 @@ public class ChallengeController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Challenge updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - validation error (e.g., experience points exceed difficulty max score)"),
         @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
-        @ApiResponse(responseCode = "404", description = "Challenge not found"),
-        @ApiResponse(responseCode = "400", description = "Validation error")
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
     })
     public ResponseEntity<?> updateChallenge(
             @PathVariable String challengeId,

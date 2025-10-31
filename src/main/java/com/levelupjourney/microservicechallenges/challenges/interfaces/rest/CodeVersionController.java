@@ -52,38 +52,45 @@ public class CodeVersionController {
     @io.swagger.v3.oas.annotations.Operation(summary = "Create code version", description = "Create a new code version for a challenge with initial code and function name.")
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Code version created successfully"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Code version already exists for this language"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad request - challenge not found or code version already exists for this language"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<?> createCodeVersion(@PathVariable String challengeId,
                                                                  @RequestBody AddCodeVersionResource resource,
                                                                  HttpServletRequest request) {
-        // Extract user roles from JWT token - only teachers can create code versions
-        String authorizationHeader = request.getHeader("Authorization");
-        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can create code versions."));
+        try {
+            // Extract user roles from JWT token - only teachers can create code versions
+            String authorizationHeader = request.getHeader("Authorization");
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only teachers and admins can create code versions."));
+            }
+            
+            // Transform resource to domain command with challengeId from path (overriding path parameter)
+            var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode(), resource.functionName());
+            var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resourceWithChallenge);
+            
+            // Execute command through domain service
+            var codeVersionId = codeVersionCommandService.handle(command);
+            
+            // Retrieve created code version for response
+            var query = new GetCodeVersionByIdQuery(codeVersionId);
+            var codeVersion = codeVersionQueryService.handle(query);
+            
+            // Transform domain entity to response resource
+            if (codeVersion.isPresent()) {
+                var codeVersionResource = CodeVersionResourceFromEntityAssembler.toResourceFromEntity(codeVersion.get());
+                return new ResponseEntity<>(codeVersionResource, HttpStatus.CREATED);
+            }
+            
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (challenge not found, code version already exists)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-        
-        // Transform resource to domain command with challengeId from path (overriding path parameter)
-        var resourceWithChallenge = new AddCodeVersionResource(challengeId, resource.language(), resource.defaultCode(), resource.functionName());
-        var command = AddCodeVersionCommandFromResourceAssembler.toCommandFromResource(resourceWithChallenge);
-        
-        // Execute command through domain service
-        var codeVersionId = codeVersionCommandService.handle(command);
-        
-        // Retrieve created code version for response
-        var query = new GetCodeVersionByIdQuery(codeVersionId);
-        var codeVersion = codeVersionQueryService.handle(query);
-        
-        // Transform domain entity to response resource
-        if (codeVersion.isPresent()) {
-            var codeVersionResource = CodeVersionResourceFromEntityAssembler.toResourceFromEntity(codeVersion.get());
-            return new ResponseEntity<>(codeVersionResource, HttpStatus.CREATED);
-        }
-        
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Get code version by ID
@@ -154,37 +161,45 @@ public class CodeVersionController {
     @io.swagger.v3.oas.annotations.Operation(summary = "Update code version", description = "Update the initial code and/or function name of a code version.")
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Code version updated successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad request - code version not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Code version not found")
     })
     public ResponseEntity<?> updateCodeVersion(@PathVariable String challengeId,
                                                                @PathVariable String codeVersionId,
                                                                @RequestBody UpdateCodeVersionResource resource,
                                                                HttpServletRequest request) {
-        // Extract user roles from JWT token - only teachers can update code versions
-        String authorizationHeader = request.getHeader("Authorization");
-        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can update code versions."));
+        try {
+            // Extract user roles from JWT token - only teachers can update code versions
+            String authorizationHeader = request.getHeader("Authorization");
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only teachers and admins can update code versions."));
+            }
+            
+            // Transform resource to domain command
+            var command = UpdateCodeVersionCommandFromResourceAssembler.toCommandFromResource(codeVersionId, resource);
+            
+            // Execute command through domain service
+            codeVersionCommandService.handle(command);
+            
+            // Retrieve updated code version for response
+            var query = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
+            var codeVersion = codeVersionQueryService.handle(query);
+            
+            // Transform domain entity to response resource
+            if (codeVersion.isPresent()) {
+                var codeVersionResource = CodeVersionResourceFromEntityAssembler.toResourceFromEntity(codeVersion.get());
+                return new ResponseEntity<>(codeVersionResource, HttpStatus.OK);
+            }
+            
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (code version not found)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-        
-        // Transform resource to domain command
-        var command = UpdateCodeVersionCommandFromResourceAssembler.toCommandFromResource(codeVersionId, resource);
-        
-        // Execute command through domain service
-        codeVersionCommandService.handle(command);
-        
-        // Retrieve updated code version for response
-        var query = new GetCodeVersionByIdQuery(new CodeVersionId(UUID.fromString(codeVersionId)));
-        var codeVersion = codeVersionQueryService.handle(query);
-        
-        // Transform domain entity to response resource
-        if (codeVersion.isPresent()) {
-            var codeVersionResource = CodeVersionResourceFromEntityAssembler.toResourceFromEntity(codeVersion.get());
-            return new ResponseEntity<>(codeVersionResource, HttpStatus.OK);
-        }
-        
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
 }
