@@ -46,41 +46,49 @@ public class CodeVersionTestController {
     @io.swagger.v3.oas.annotations.Operation(summary = "Create test", description = "Create a new test for a code version. isSecret indicates if the test is hidden from students.")
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Test created successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad request - code version not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<?> addCodeVersionTest(@PathVariable String challengeId,
                                                                       @PathVariable String codeVersionId,
                                                                       @RequestBody AddCodeVersionTestResource resource,
                                                                       HttpServletRequest request) {
-        // Extract user roles from JWT token - only teachers can create tests
-        String authorizationHeader = request.getHeader("Authorization");
-        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErrorResponse("Access denied. Only teachers and admins can create tests."));
+        try {
+            // Extract user roles from JWT token - only teachers can create tests
+            String authorizationHeader = request.getHeader("Authorization");
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+            if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Access denied. Only teachers and admins can create tests."));
+            }
+            
+            // Transform resource to domain command with codeVersionId from path (overriding path parameter)
+            var resourceWithCodeVersion = new AddCodeVersionTestResource(codeVersionId, resource.input(), 
+                                                                         resource.expectedOutput(), 
+                                                                         resource.customValidationCode(), 
+                                                                         resource.failureMessage(),
+                                                                         resource.isSecret());
+            var command = AddCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(resourceWithCodeVersion);
+            
+            // Execute command through domain service
+            var testId = codeVersionTestCommandService.handle(command);
+            
+            // Retrieve created test for response
+            var test = codeVersionTestQueryService.getCodeVersionTestById(testId);
+            
+            // Transform domain entity to response resource
+            if (test.isPresent()) {
+                var testResource = CodeVersionTestResourceFromEntityAssembler.toResourceFromEntity(test.get());
+                return new ResponseEntity<>(testResource, HttpStatus.CREATED);
+            }
+            
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (code version not found)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-        
-        // Transform resource to domain command with codeVersionId from path (overriding path parameter)
-        var resourceWithCodeVersion = new AddCodeVersionTestResource(codeVersionId, resource.input(), 
-                                                                     resource.expectedOutput(), 
-                                                                     resource.customValidationCode(), 
-                                                                     resource.failureMessage(),
-                                                                     resource.isSecret());
-        var command = AddCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(resourceWithCodeVersion);
-        
-        // Execute command through domain service
-        var testId = codeVersionTestCommandService.handle(command);
-        
-        // Retrieve created test for response
-        var test = codeVersionTestQueryService.getCodeVersionTestById(testId);
-        
-        // Transform domain entity to response resource
-        if (test.isPresent()) {
-            var testResource = CodeVersionTestResourceFromEntityAssembler.toResourceFromEntity(test.get());
-            return new ResponseEntity<>(testResource, HttpStatus.CREATED);
-        }
-        
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Get test by ID
@@ -148,6 +156,8 @@ public class CodeVersionTestController {
     @io.swagger.v3.oas.annotations.Operation(summary = "Update test", description = "Update test details including input, expected output, custom validation, failure message, and secret status.")
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Test updated successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad request - test not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Test not found")
     })
     public ResponseEntity<?> updateCodeVersionTest(@PathVariable String challengeId,
@@ -155,29 +165,35 @@ public class CodeVersionTestController {
                                                                          @PathVariable String testId,
                                                                          @RequestBody UpdateCodeVersionTestResource resource,
                                                                          HttpServletRequest request) {
-        // Extract user roles from JWT token - only teachers can update tests
-        String authorizationHeader = request.getHeader("Authorization");
-        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
-//        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
-//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-//                    .body(new ErrorResponse("Access denied. Only teachers and admins can update tests."));
-//        }
-        
-        // Transform resource to domain command
-        var command = UpdateCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(testId, resource);
-        
-        // Execute command through domain service
-        codeVersionTestCommandService.handle(command);
-        
-        // Retrieve updated test for response
-        var test = codeVersionTestQueryService.getCodeVersionTestById(new CodeVersionTestId(UUID.fromString(testId)));
-        
-        // Transform domain entity to response resource
-        if (test.isPresent()) {
-            var testResource = CodeVersionTestResourceFromEntityAssembler.toResourceFromEntity(test.get());
-            return new ResponseEntity<>(testResource, HttpStatus.OK);
+        try {
+            // Extract user roles from JWT token - only teachers can update tests
+            String authorizationHeader = request.getHeader("Authorization");
+            List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+    //        if (!roles.contains("ROLE_TEACHER") && !roles.contains("ROLE_ADMIN")) {
+    //            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+    //                    .body(new ErrorResponse("Access denied. Only teachers and admins can update tests."));
+    //        }
+            
+            // Transform resource to domain command
+            var command = UpdateCodeVersionTestCommandFromResourceAssembler.toCommandFromResource(testId, resource);
+            
+            // Execute command through domain service
+            codeVersionTestCommandService.handle(command);
+            
+            // Retrieve updated test for response
+            var test = codeVersionTestQueryService.getCodeVersionTestById(new CodeVersionTestId(UUID.fromString(testId)));
+            
+            // Transform domain entity to response resource
+            if (test.isPresent()) {
+                var testResource = CodeVersionTestResourceFromEntityAssembler.toResourceFromEntity(test.get());
+                return new ResponseEntity<>(testResource, HttpStatus.OK);
+            }
+            
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (test not found)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-        
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }

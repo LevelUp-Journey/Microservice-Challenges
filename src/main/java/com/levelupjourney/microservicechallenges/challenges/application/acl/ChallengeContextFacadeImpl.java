@@ -54,7 +54,8 @@ public class ChallengeContextFacadeImpl implements ChallengesContextFacade {
 
         return Optional.of(new ChallengeForScoringResource(
             result.getId().id().toString(),
-            result.getExperiencePoints()
+            result.getExperiencePoints(),
+            result.getDifficulty()
         ));
     }
 }

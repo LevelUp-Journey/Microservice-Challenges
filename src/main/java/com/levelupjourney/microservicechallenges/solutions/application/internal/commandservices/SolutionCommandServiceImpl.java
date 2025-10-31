@@ -1,5 +1,7 @@
 package com.levelupjourney.microservicechallenges.solutions.application.internal.commandservices;
 
+import com.levelupjourney.microservicechallenges.challenges.domain.services.TimeBasedScoringStrategy;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ScoringResult;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.messaging.kafka.KafkaProducerService;
 import com.levelupjourney.microservicechallenges.solutions.application.internal.outboundservices.acl.ExternalChallengesService;
 import com.levelupjourney.microservicechallenges.solutions.application.internal.outboundservices.grpc.CodeRunnerExecutionService;
@@ -30,17 +32,20 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
     private final SolutionRepository solutionRepository;
     private final CodeRunnerExecutionService codeRunnerExecutionService;
     private final KafkaProducerService kafkaProducerService;
+    private final TimeBasedScoringStrategy timeBasedScoringStrategy;
 
     public SolutionCommandServiceImpl(ExternalChallengesService externalChallengesService,
                                     SolutionQueryService solutionQueryService,
                                     SolutionRepository solutionRepository,
                                     CodeRunnerExecutionService codeRunnerExecutionService,
-                                    KafkaProducerService kafkaProducerService) {
+                                    KafkaProducerService kafkaProducerService,
+                                    TimeBasedScoringStrategy timeBasedScoringStrategy) {
         this.externalChallengesService = externalChallengesService;
         this.solutionQueryService = solutionQueryService;
         this.solutionRepository = solutionRepository;
         this.codeRunnerExecutionService = codeRunnerExecutionService;
         this.kafkaProducerService = kafkaProducerService;
+        this.timeBasedScoringStrategy = timeBasedScoringStrategy;
     }
 
     @Override
@@ -79,6 +84,11 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         log.info("✅ Solution found:");
         log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id());
         log.info("  - Current status: '{}'", existingSolution.getStatus());
+
+        // Record submission attempt to update lastAttemptAt timestamp
+        existingSolution.recordSubmissionAttempt();
+        solutionRepository.save(existingSolution);
+        log.info("✅ Submission attempt recorded");
 
         try {
             // 2. Get code version details (language + tests) through ACL
@@ -151,39 +161,67 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             log.info("✅ Challenge details retrieved:");
             log.info("  - Challenge ID: '{}'", challenge.challengeId());
             log.info("  - Max Experience Points: {}", challenge.experiencePoints());
+            log.info("  - Difficulty: {}", challenge.difficulty());
 
-            // Calculate score based on test results
-            int pointsEarned = calculateScore(
+            // Calculate time taken to solve the challenge (in seconds)
+            long timeTakenSeconds = calculateTimeTaken(existingSolution);
+
+            log.info("⏱️ Time tracking:");
+            log.info("  - Challenge started at: {}", existingSolution.getCreatedAt());
+            log.info("  - Challenge completed at: {}", existingSolution.getLastAttemptAt());
+            log.info("  - Time taken: {} seconds ({} minutes)", timeTakenSeconds, timeTakenSeconds / 60);
+
+            // Calculate score with time-based penalties
+            ScoringResult scoringResult = timeBasedScoringStrategy.calculateScore(
                 challenge.experiencePoints(),
-                executionResult.passedTests(),
-                executionResult.totalTests(),
+                challenge.difficulty(),
+                timeTakenSeconds,
                 executionResult.successful()
             );
 
-            log.info("💯 Score calculated:");
-            log.info("  - Points Earned: {}/{}", pointsEarned, challenge.experiencePoints());
+            log.info("💯 Score calculated with time-based penalties:");
+            log.info("  - Base Score: {}", scoringResult.baseScore());
+            log.info("  - Score Multiplier: {}%", scoringResult.scoreMultiplier());
+            log.info("  - Penalty Applied: {}", scoringResult.penaltyApplied());
+            log.info("  - Points Earned: {}/{}", scoringResult.finalScore(), challenge.experiencePoints());
             log.info("  - Success Rate: {:.1f}%", executionResult.getSuccessRate());
+            log.info("  - Time Performance: {} (formatted: {})",
+                scoringResult.getTimeTakenMinutes() + " min",
+                scoringResult.getFormattedTime());
 
             // Assign score to solution
-            existingSolution.assignScore(pointsEarned, challenge.experiencePoints());
+            existingSolution.assignScore(scoringResult.finalScore(), challenge.experiencePoints());
             solutionRepository.save(existingSolution);
             log.info("✅ Score saved to solution");
 
             // Publish event to Kafka if student earned points
-            if (pointsEarned > 0) {
+            if (scoringResult.finalScore() > 0) {
                 log.info("📤 Publishing ChallengeCompletedEvent to Kafka...");
+
+                // Generate scoring reason explanation
+                String scoringReason = scoringResult.getScoringReason(challenge.difficulty().name());
+
                 var event = new ChallengeCompletedEvent(
                     command.studentId().id().toString(),
                     existingSolution.getChallengeId().id().toString(),
                     existingSolution.getId().id().toString(),
-                    pointsEarned,
+                    scoringResult.finalScore(),
                     challenge.experiencePoints(),
                     executionResult.passedTests(),
                     executionResult.totalTests(),
                     executionResult.successful(),
-                    executionResult.timeTaken(),
+                    executionResult.timeTaken(), // Code execution time (NOT solution time)
+                    timeTakenSeconds, // Time taken to solve the challenge
+                    scoringResult.scoreMultiplier(),
+                    scoringResult.penaltyApplied(),
+                    scoringReason,
                     LocalDateTime.now()
                 );
+
+                log.info("📊 Event details:");
+                log.info("  - Score Multiplier: {}%", scoringResult.scoreMultiplier());
+                log.info("  - Penalty Applied: {}", scoringResult.penaltyApplied());
+                log.info("  - Scoring Reason: {}", scoringReason);
 
                 kafkaProducerService.publishChallengeCompleted(event);
                 log.info("✅ Event published successfully");
@@ -195,15 +233,17 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
             var solutionReportId = new SolutionReportId(UUID.randomUUID());
             log.info("  - Solution Report ID: '{}'", solutionReportId.value());
 
-            // Enhanced message with execution details and score
+            // Enhanced message with execution details, score, and time-based penalty info
             String message = String.format(
-                "Solution executed via CodeRunner. %s. %d out of %d tests passed (%.1f%%). Score: %d/%d points. Execution time: %d ms",
+                "Solution executed via CodeRunner. %s. %d out of %d tests passed (%.1f%%). Score: %d/%d points (%.0f%% with time penalty). Time taken: %s. Execution time: %d ms",
                 executionResult.message(),
                 executionResult.passedTests(),
                 executionResult.totalTests(),
                 executionResult.getSuccessRate(),
-                pointsEarned,
+                scoringResult.finalScore(),
                 challenge.experiencePoints(),
+                (double) scoringResult.scoreMultiplier(),
+                scoringResult.getFormattedTime(),
                 executionResult.timeTaken()
             );
 
@@ -214,8 +254,9 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
                 approvedTestIds,
                 executionResult.totalTests(),
                 message,
-                String.format("Execution completed in %d ms. Score: %d/%d points",
-                    executionResult.timeTaken(), pointsEarned, challenge.experiencePoints()),
+                String.format("Execution completed in %d ms. Score: %d/%d points (%d%% time multiplier applied)",
+                    executionResult.timeTaken(), scoringResult.finalScore(), challenge.experiencePoints(),
+                    scoringResult.scoreMultiplier()),
                 executionResult.timeTaken()
             );
             
@@ -297,34 +338,24 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
 
 
     /**
-     * Calculate the score earned based on test results.
-     * Strategy: Only award full points if ALL tests pass. Otherwise, award proportional points.
+     * Calculate the time taken to solve the challenge (in seconds).
+     * Time is measured from when the solution was created (challenge started)
+     * to when the last submission attempt was made.
      *
-     * @param maxPoints Maximum points available for the challenge
-     * @param passedTests Number of tests that passed
-     * @param totalTests Total number of tests
-     * @param allPassed Whether all tests passed
-     * @return Points earned (0 to maxPoints)
+     * @param solution The solution aggregate
+     * @return Time taken in seconds
      */
-    private int calculateScore(Integer maxPoints, int passedTests, int totalTests, boolean allPassed) {
-        if (maxPoints == null || maxPoints == 0) {
-            return 0;
+    private long calculateTimeTaken(Solution solution) {
+        if (solution.getLastAttemptAt() == null || solution.getCreatedAt() == null) {
+            log.warn("⚠️ Unable to calculate time taken: missing timestamps");
+            return 0L;
         }
 
-        if (totalTests == 0) {
-            return 0;
-        }
+        long createdAtMillis = solution.getCreatedAt().getTime();
+        long lastAttemptMillis = solution.getLastAttemptAt().getTime();
+        long timeTakenMillis = lastAttemptMillis - createdAtMillis;
 
-        // Strategy 1: Full points only if all tests pass (recommended for competitive environment)
-        if (allPassed) {
-            return maxPoints;
-        }
-
-        // Strategy 2: Proportional scoring (award partial credit)
-        // Uncomment this if you want to award proportional points even when not all tests pass
-        // return (maxPoints * passedTests) / totalTests;
-
-        // Default: No points if not all tests pass
-        return 0;
+        // Convert milliseconds to seconds
+        return timeTakenMillis / 1000;
     }
 }
