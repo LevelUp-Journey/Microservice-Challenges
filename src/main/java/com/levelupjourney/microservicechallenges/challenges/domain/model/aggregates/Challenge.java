@@ -62,6 +62,15 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         this.teacherId = command.teacherId();
         this.name = command.name();
         this.description = command.description();
+        
+        // Validate experience points against difficulty max score
+        if (command.experiencePoints() > command.difficulty().getMaxScore()) {
+            throw new IllegalArgumentException(
+                String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                    command.experiencePoints(), command.difficulty(), command.difficulty().getMaxScore())
+            );
+        }
+        
         this.experiencePoints = command.experiencePoints();
         this.difficulty = command.difficulty();
         this.status = ChallengeStatus.DRAFT;
@@ -100,6 +109,13 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.description = description;
         }
         if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against current difficulty max score
+            if (experiencePoints > this.difficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, this.difficulty, this.difficulty.getMaxScore())
+                );
+            }
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
@@ -116,11 +132,19 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         if (description != null) {
             this.description = description;
         }
-        if (experiencePoints != null && experiencePoints >= 0) {
-            this.experiencePoints = experiencePoints;
-        }
         if (difficulty != null) {
             this.difficulty = difficulty;
+        }
+        if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against difficulty max score (use new difficulty if provided, otherwise current)
+            Difficulty validationDifficulty = difficulty != null ? difficulty : this.difficulty;
+            if (experiencePoints > validationDifficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, validationDifficulty, validationDifficulty.getMaxScore())
+                );
+            }
+            this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
             // Replace all tags
@@ -138,6 +162,13 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.description = description;
         }
         if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against current difficulty max score
+            if (experiencePoints > this.difficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, this.difficulty, this.difficulty.getMaxScore())
+                );
+            }
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
@@ -166,11 +197,19 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         if (description != null) {
             this.description = description;
         }
-        if (experiencePoints != null && experiencePoints >= 0) {
-            this.experiencePoints = experiencePoints;
-        }
         if (difficulty != null) {
             this.difficulty = difficulty;
+        }
+        if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against difficulty max score (use new difficulty if provided, otherwise current)
+            Difficulty validationDifficulty = difficulty != null ? difficulty : this.difficulty;
+            if (experiencePoints > validationDifficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, validationDifficulty, validationDifficulty.getMaxScore())
+                );
+            }
+            this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
             // Replace all tags
