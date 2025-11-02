@@ -53,3 +53,5 @@ eureka:
     client:
         service-url:
             defaultZone: ${SERVICE_DISCOVERY_URL}
+    instance:
+        prefer-ip-address: true
