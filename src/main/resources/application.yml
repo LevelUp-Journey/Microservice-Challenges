@@ -1,12 +1,12 @@
 spring:
   application:
-    name: microservice-challenges
+    name: CHALLENGES_SERVICE
 
   datasource:
     hikari:
       auto-commit: false
     url: jdbc:postgresql://localhost:5432/challenges_microservice
-    username: postgres
+    username: admin
     password: admin
     driver-class-name: org.postgresql.Driver
 
@@ -47,3 +47,9 @@ grpc:
       address: static://localhost:9084
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
+
+# Configuration for Service Discovery
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
