@@ -1,49 +1,57 @@
 spring:
-  application:
-    name: microservice-challenges
+    application:
+        name: CHALLENGES_SERVICE
 
-  datasource:
-    hikari:
-      auto-commit: false
-    url: jdbc:postgresql://localhost:5432/challenges_microservice
-    username: postgres
-    password: admin
-    driver-class-name: org.postgresql.Driver
+    datasource:
+        hikari:
+            auto-commit: false
+        url: ${DB_URL:jdbc:postgresql://localhost:5432/challenges_microservice}
+        username: ${DB_USERNAME:admin}
+        password: ${DB_PASSWORD:admin}
+        driver-class-name: org.postgresql.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: update
-      naming:
-        physical-strategy: com.levelupjourney.microservicechallenges.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
-    open-in-view: true
+    jpa:
+        hibernate:
+            ddl-auto: update
+            naming:
+                physical-strategy: com.levelupjourney.microservicechallenges.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+        open-in-view: true
 
 server:
-  port: 8083
+    port: 8083
 
 # JWT Configuration
 jwt:
-  secret: d3ee61e796a04895924719559f19a19de2e31d4c330208d8c410c2d63c89de9b5aadc298404a843d521569e812c599bda47b65d4c7fce5a8ded21f24d8df59dc
+    secret: ${JWT_SECRET}
 
 # Kafka Configuration
 kafka:
-  bootstrap-servers: localhost:9092
-  producer:
-    key-serializer: org.apache.kafka.common.serialization.StringSerializer
-    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    properties:
-      spring.json.add.type.headers: false
-  topics:
-    challenge-completed: challenge.completed
+    bootstrap-servers: ${MESSAGE_BROKER_URL}
+    producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+        properties:
+            spring.json.add.type.headers: false
+    topics:
+        challenge-completed: challenge.completed
 
 # CORRECTED gRPC Configuration - Fixed address format
 grpc:
-  client:
-    code-runner:
-      address: static://localhost:9084
-      negotiation-type: plaintext
-      max-inbound-message-size: 8MB
+    client:
+        code-runner:
+            address: static://localhost:9084
+            negotiation-type: plaintext
+            max-inbound-message-size: 8MB
 
-    code-runner-fallback:
-      address: static://localhost:9084
-      negotiation-type: plaintext
-      max-inbound-message-size: 8MB
+        code-runner-fallback:
+            address: static://localhost:9084
+            negotiation-type: plaintext
+            max-inbound-message-size: 8MB
+
+# Configuration for Service Discovery
+eureka:
+    client:
+        service-url:
+            defaultZone: ${SERVICE_DISCOVERY_URL}
+    instance:
+        prefer-ip-address: true
