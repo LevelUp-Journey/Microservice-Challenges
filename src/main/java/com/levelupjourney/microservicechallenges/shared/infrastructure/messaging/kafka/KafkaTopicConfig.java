@@ -1,36 +1,23 @@
 package com.levelupjourney.microservicechallenges.shared.infrastructure.messaging.kafka;
 
-import org.apache.kafka.clients.admin.NewTopic;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.config.TopicBuilder;
 
 /**
  * Kafka Topic Configuration.
- * Defines topics with explicit partitions and replication settings.
- * This ensures topics are created with proper configuration when the application starts.
+ * 
+ * NOTA IMPORTANTE PARA AZURE EVENT HUBS:
+ * - Azure Event Hubs NO soporta la creación automática de topics vía Kafka Admin API
+ * - Los Event Hubs (topics) deben ser creados manualmente en Azure Portal
+ * - Esta clase se mantiene para documentación pero no define beans activos
+ * 
+ * Para crear el topic en Azure:
+ * 1. Ve a Azure Portal
+ * 2. Navega a tu Event Hubs Namespace
+ * 3. Crea un Event Hub llamado "challenge.completed"
+ * 4. Configura el número de particiones deseado (recomendado: 3 o más)
  */
 @Configuration
 public class KafkaTopicConfig {
-
-    @Value("${kafka.topics.challenge-completed}")
-    private String challengeCompletedTopic;
-
-    /**
-     * Configure the challenge.completed topic.
-     * - Partitions: 3 (allows parallel processing by consumer group)
-     * - Replicas: 1 (for development; increase in production for fault tolerance)
-     * - Retention: 7 days (events older than this will be deleted)
-     *
-     * @return NewTopic configuration
-     */
-    @Bean
-    public NewTopic challengeCompletedTopic() {
-        return TopicBuilder.name(challengeCompletedTopic)
-                .partitions(3)
-                .replicas(1)
-                .config("retention.ms", "604800000") // 7 days in milliseconds
-                .build();
-    }
+    // No se requieren beans para Azure Event Hubs
+    // Los topics se gestionan manualmente en Azure Portal
 }

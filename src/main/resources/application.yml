@@ -42,10 +42,12 @@ spring:
             add:
               type:
                 headers: false
+    
+    # Deshabilitar auto-creación para Azure Event Hubs
+    # Azure Event Hubs no soporta Kafka Admin API
     admin:
-      new-topics:
-        - name: challenge.completed
-          partitions: 3
+      auto-create: false
+      fail-fast: false
 
 server:
   port: ${PORT:8083}
