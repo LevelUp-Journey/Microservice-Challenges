@@ -65,12 +65,12 @@ kafka:
 grpc:
   client:
     code-runner:
-      address: static://localhost:9084
+      address: discovery:///code-runner-service
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
 
     code-runner-fallback:
-      address: static://localhost:9084
+      address: discovery:///code-runner-service
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
 
