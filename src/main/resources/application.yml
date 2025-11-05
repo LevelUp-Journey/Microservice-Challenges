@@ -2,9 +2,6 @@ spring:
   application:
     name: challenges-service
 
-  config:
-    import: optional:file:.env[.properties]
-
   datasource:
     url: ${POSTGRES_URL}
     username: ${POSTGRES_USERNAME}
@@ -46,8 +43,6 @@ spring:
               type:
                 headers: false
 
-    # Deshabilitar auto-creación para Azure Event Hubs
-    # Azure Event Hubs no soporta Kafka Admin API
     admin:
       auto-create: false
       fail-fast: false
@@ -85,20 +80,11 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
   instance:
-    # ⚙️ En Azure o redes internas, NO usar IP pública
     prefer-ip-address: false
-
-    # Usa el nombre del contenedor / app como hostname (Azure resuelve el DNS)
     hostname: ${HOSTNAME:${spring.application.name}}
-
-    # URLs para que Eureka vea el estado y salud del servicio
     status-page-url: http://${eureka.instance.hostname}:${server.port:8083}/swagger-ui/index.html
     health-check-url: http://${eureka.instance.hostname}:${server.port:8083}/actuator/health
-
-    # Identificador único para esta instancia
     instance-id: ${spring.application.name}:${server.port:8083}
-
-    # Intervalos de comunicación con Eureka
     lease-renewal-interval-in-seconds: 30
     lease-expiration-duration-in-seconds: 90
 
