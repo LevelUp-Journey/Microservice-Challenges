@@ -3,35 +3,59 @@ spring:
     name: challenges-service
 
   datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
     hikari:
       auto-commit: false
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/challenges_microservice}
-    username: ${DB_USERNAME:admin}
-    password: ${DB_PASSWORD:admin}
-    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
       naming:
         physical-strategy: com.levelupjourney.microservicechallenges.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    show-sql: false
     open-in-view: true
 
+  # --- Configuración de Kafka (Azure Event Hubs) ---
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    properties:
+      security.protocol: SASL_SSL
+      sasl.mechanism: PLAIN
+      sasl.jaas.config: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="$ConnectionString" password="${KAFKA_CONNECTION_STRING}";'
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        max.block.ms: 2000
+        request.timeout.ms: 2000
+        delivery.timeout.ms: 3000
+        spring:
+          json:
+            add:
+              type:
+                headers: false
+
+    admin:
+      auto-create: false
+      fail-fast: false
+
 server:
-  port: 8083
+  port: ${PORT:8083}
 
 # JWT Configuration
 jwt:
   secret: ${JWT_SECRET}
 
-# Kafka Configuration
+# Kafka Topics Configuration
 kafka:
-  bootstrap-servers: ${MESSAGE_BROKER_URL}
-  producer:
-    key-serializer: org.apache.kafka.common.serialization.StringSerializer
-    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    properties:
-      spring.json.add.type.headers: false
   topics:
     challenge-completed: challenge.completed
 
@@ -39,12 +63,12 @@ kafka:
 grpc:
   client:
     code-runner:
-      address: static://localhost:9084
+      address: discovery:///code-runner-service
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
 
     code-runner-fallback:
-      address: static://localhost:9084
+      address: discovery:///code-runner-service
       negotiation-type: plaintext
       max-inbound-message-size: 8MB
 
@@ -52,17 +76,27 @@ grpc:
 eureka:
   client:
     service-url:
-      defaultZone: ${SERVICE_DISCOVERY_URL}
+      defaultZone: ${SERVICE_DISCOVERY_URL:http://service-discovery:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
+    registry-fetch-interval-seconds: 10    # sincroniza lista de servicios cada 10s
+    healthcheck:
+      enabled: true                       # usa health endpoint para validación real
+
   instance:
-    ip-address: ${SERVER_IP}
     prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10  # envía heartbeat cada 10s
+    lease-expiration-duration-in-seconds: 30 # Eureka espera 30s antes de eliminarlo
+    instance-id: ${spring.application.name}:${server.port}:${random.value}
+    metadata-map:
+      zone: default
 
-    status-page-url: http://${eureka.instance.ip-address}:${server.port:8083}/swagger-ui/index.html
-    health-check-url: http://${eureka.instance.ip-address}:${server.port:8083}/actuator/health
-
-    instance-id: ${spring.application.name}:${server.port:8083}
-
-    lease-renewal-interval-in-seconds: 30
-    lease-expiration-duration-in-seconds: 90
+# --- Configuración de Actuator ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

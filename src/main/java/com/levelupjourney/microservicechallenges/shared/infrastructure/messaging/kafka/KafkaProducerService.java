@@ -35,7 +35,7 @@ public class KafkaProducerService {
      * @param event The challenge completed event containing score information
      */
     public void publishChallengeCompleted(ChallengeCompletedEvent event) {
-        log.info("Publishing ChallengeCompletedEvent to Kafka:");
+        log.info("📤 Publishing ChallengeCompletedEvent to Azure Event Hub (Kafka):");
         log.info("  - Topic: '{}'", challengeCompletedTopic);
         log.info("  - Student ID: '{}'", event.getStudentId());
         log.info("  - Challenge ID: '{}'", event.getChallengeId());
@@ -50,12 +50,13 @@ public class KafkaProducerService {
 
         future.whenComplete((result, ex) -> {
             if (ex == null) {
-                log.info("Successfully published ChallengeCompletedEvent:");
+                log.info("✅ Successfully published ChallengeCompletedEvent to Azure Event Hub:");
+                log.info("  - Topic: {}", result.getRecordMetadata().topic());
                 log.info("  - Partition: {}", result.getRecordMetadata().partition());
                 log.info("  - Offset: {}", result.getRecordMetadata().offset());
                 log.info("  - Timestamp: {}", result.getRecordMetadata().timestamp());
             } else {
-                log.error("Failed to publish ChallengeCompletedEvent for student '{}': {}",
+                log.error("❌ Failed to publish ChallengeCompletedEvent to Azure Event Hub for student '{}': {}",
                     event.getStudentId(), ex.getMessage(), ex);
             }
         });
