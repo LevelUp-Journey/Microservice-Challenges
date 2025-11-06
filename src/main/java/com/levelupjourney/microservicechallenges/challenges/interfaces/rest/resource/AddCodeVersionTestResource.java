@@ -5,6 +5,7 @@ public record AddCodeVersionTestResource(
     String input,
     String expectedOutput,
     String customValidationCode,
-    String failureMessage
+    String failureMessage,
+    Boolean isSecret
 ) {
 }

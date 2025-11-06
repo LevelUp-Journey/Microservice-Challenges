@@ -30,8 +30,9 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
 
     @Column(nullable = false)
     private String name;
-    
-    @Column(length = 1000)
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
     
     private Integer experiencePoints;
@@ -51,22 +52,29 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @OneToMany(mappedBy = "challengeId", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CodeVersion> versions = new ArrayList<>();
     
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "challenge_tags",
-        joinColumns = @JoinColumn(name = "challenge_id"),
-        inverseJoinColumns = @JoinColumn(name = "tag_id")
-    )
-    private List<Tag> tags = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(name = "challenge_tags", joinColumns = @JoinColumn(name = "challenge_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
 
     public Challenge(CreateChallengeCommand command) {
         this.id = new ChallengeId(UUID.randomUUID());
         this.teacherId = command.teacherId();
         this.name = command.name();
         this.description = command.description();
+        
+        // Validate experience points against difficulty max score
+        if (command.experiencePoints() > command.difficulty().getMaxScore()) {
+            throw new IllegalArgumentException(
+                String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                    command.experiencePoints(), command.difficulty(), command.difficulty().getMaxScore())
+            );
+        }
+        
         this.experiencePoints = command.experiencePoints();
         this.difficulty = command.difficulty();
         this.status = ChallengeStatus.DRAFT;
+        this.tags = command.tags() != null ? new ArrayList<>(command.tags()) : new ArrayList<>();
     }
     
     // Business methods
@@ -93,7 +101,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, List<String> tags) {
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
         }
@@ -101,6 +109,13 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.description = description;
         }
         if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against current difficulty max score
+            if (experiencePoints > this.difficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, this.difficulty, this.difficulty.getMaxScore())
+                );
+            }
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
@@ -110,19 +125,27 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, List<String> tags) {
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
         }
         if (description != null) {
             this.description = description;
-        }
-        if (experiencePoints != null && experiencePoints >= 0) {
-            this.experiencePoints = experiencePoints;
         }
         if (difficulty != null) {
             this.difficulty = difficulty;
         }
+        if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against difficulty max score (use new difficulty if provided, otherwise current)
+            Difficulty validationDifficulty = difficulty != null ? difficulty : this.difficulty;
+            if (experiencePoints > validationDifficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, validationDifficulty, validationDifficulty.getMaxScore())
+                );
+            }
+            this.experiencePoints = experiencePoints;
+        }
         if (tags != null) {
             // Replace all tags
             this.tags.clear();
@@ -130,7 +153,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
     
-    public void updateDetails(String name, String description, Integer experiencePoints, ChallengeStatus status, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, ChallengeStatus status, List<String> tags) {
         // Update basic details
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
@@ -139,6 +162,13 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
             this.description = description;
         }
         if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against current difficulty max score
+            if (experiencePoints > this.difficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, this.difficulty, this.difficulty.getMaxScore())
+                );
+            }
             this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
@@ -159,7 +189,7 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         }
     }
 
-    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, ChallengeStatus status, List<Tag> tags) {
+    public void updateDetails(String name, String description, Integer experiencePoints, Difficulty difficulty, ChallengeStatus status, List<String> tags) {
         // Update basic details
         if (name != null && !name.trim().isEmpty()) {
             this.name = name;
@@ -167,11 +197,19 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         if (description != null) {
             this.description = description;
         }
-        if (experiencePoints != null && experiencePoints >= 0) {
-            this.experiencePoints = experiencePoints;
-        }
         if (difficulty != null) {
             this.difficulty = difficulty;
+        }
+        if (experiencePoints != null && experiencePoints >= 0) {
+            // Validate experience points against difficulty max score (use new difficulty if provided, otherwise current)
+            Difficulty validationDifficulty = difficulty != null ? difficulty : this.difficulty;
+            if (experiencePoints > validationDifficulty.getMaxScore()) {
+                throw new IllegalArgumentException(
+                    String.format("Experience points (%d) cannot exceed maximum score for %s difficulty (%d)", 
+                        experiencePoints, validationDifficulty, validationDifficulty.getMaxScore())
+                );
+            }
+            this.experiencePoints = experiencePoints;
         }
         if (tags != null) {
             // Replace all tags
@@ -192,16 +230,16 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     }
 
     // Helper method to add a tag to the challenge
-    public void addTag(Tag tag) {
-        if (tag != null && !this.tags.contains(tag)) {
-            this.tags.add(tag);
+    public void addTag(String tag) {
+        if (tag != null && !tag.trim().isEmpty() && !this.tags.contains(tag.toLowerCase())) {
+            this.tags.add(tag.toLowerCase());
         }
     }
 
     // Helper method to remove a tag from the challenge
-    public void removeTag(Tag tag) {
+    public void removeTag(String tag) {
         if (tag != null) {
-            this.tags.remove(tag);
+            this.tags.remove(tag.toLowerCase());
         }
     }
 

@@ -3,6 +3,7 @@ package com.levelupjourney.microservicechallenges.challenges.application.interna
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionsByChallengeIdsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.CodeVersionRepository;
 import org.springframework.stereotype.Service;
@@ -27,5 +28,19 @@ public class CodeVersionQueryServiceImpl implements CodeVersionQueryService {
     @Override
     public List<CodeVersion> handle(GetCodeVersionsByChallengeIdQuery query) {
         return codeVersionRepository.findByChallengeId(query.challengeId().id());
+    }
+
+    @Override
+    public List<CodeVersion> handle(GetCodeVersionsByChallengeIdsQuery query) {
+        var ids = query.challengeIds()
+                .stream()
+                .map(ch -> ch.id())
+                .toList();
+
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        return codeVersionRepository.findByChallengeIdIn(ids);
     }
 }

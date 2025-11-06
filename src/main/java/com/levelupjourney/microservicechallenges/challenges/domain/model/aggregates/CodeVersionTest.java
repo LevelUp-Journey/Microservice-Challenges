@@ -38,6 +38,9 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
     @Column(columnDefinition = "TEXT")
     private String failureMessage;
 
+    @Column(name = "is_secret", nullable = false)
+    private Boolean isSecret;
+
     public CodeVersionTest(AddCodeVersionTestCommand command) {
         this.id = new CodeVersionTestId(UUID.randomUUID());
         this.codeVersionId = command.codeVersionId();
@@ -45,10 +48,11 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
         this.expectedOutput = command.expectedOutput();
         this.customValidationCode = command.customValidationCode();
         this.failureMessage = command.failureMessage();
+        this.isSecret = command.isSecret() != null ? command.isSecret() : false;
     }
     
     // Business methods
-    public void updateTestDetails(String input, String expectedOutput, String customValidationCode, String failureMessage) {
+    public void updateTestDetails(String input, String expectedOutput, String customValidationCode, String failureMessage, Boolean isSecret) {
         if (input != null) {
             this.input = input;
         }
@@ -60,6 +64,9 @@ public class CodeVersionTest extends AuditableAbstractAggregateRoot<CodeVersionT
         }
         if (failureMessage != null) {
             this.failureMessage = failureMessage;
+        }
+        if (isSecret != null) {
+            this.isSecret = isSecret;
         }
     }
 }

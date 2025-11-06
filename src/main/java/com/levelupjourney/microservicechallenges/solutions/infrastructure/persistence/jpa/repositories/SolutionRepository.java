@@ -36,10 +36,10 @@ public interface SolutionRepository extends JpaRepository<Solution, SolutionId> 
     Optional<Solution> findByChallengeIdAndCodeVersionIdAndStudentId(@Param("challengeId") UUID challengeId, @Param("codeVersionId") UUID codeVersionId, @Param("studentId") UUID studentId);
 
     // Find solutions by status
-    List<Solution> findByDetails_Status(SolutionStatus status);
+    List<Solution> findByStatus(SolutionStatus status);
 
     // Find solutions by student and status using clean method name
-    @Query("SELECT s FROM Solution s WHERE s.studentId.id = :studentId AND s.details.status = :status")
+    @Query("SELECT s FROM Solution s WHERE s.studentId.id = :studentId AND s.status = :status")
     List<Solution> findByStudentIdAndStatus(@Param("studentId") UUID studentId, @Param("status") SolutionStatus status);
 
     // Check if solution exists for student and code version using clean method names
@@ -55,10 +55,10 @@ public interface SolutionRepository extends JpaRepository<Solution, SolutionId> 
     long countByChallengeId(@Param("challengeId") UUID challengeId);
 
     // Find successful solutions by challenge (for analytics)
-    @Query("SELECT s FROM Solution s WHERE s.challengeId.id = :challengeId AND s.details.status = 'SUCCESS'")
+    @Query("SELECT s FROM Solution s WHERE s.challengeId.id = :challengeId AND s.status = 'SUCCESS'")
     List<Solution> findSuccessfulSolutionsByChallengeId(@Param("challengeId") UUID challengeId);
 
     // Find solutions with most attempts by challenge
-    @Query("SELECT s FROM Solution s WHERE s.challengeId.id = :challengeId ORDER BY s.details.attempts DESC")
+    @Query("SELECT s FROM Solution s WHERE s.challengeId.id = :challengeId ORDER BY s.attempts DESC")
     List<Solution> findSolutionsByChallengeIdOrderByAttemptsDesc(@Param("challengeId") UUID challengeId);
 }

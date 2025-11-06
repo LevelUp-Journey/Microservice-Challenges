@@ -3,5 +3,14 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.comman
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.Difficulty;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 
-public record CreateChallengeCommand(TeacherId teacherId, String name, String description, Integer experiencePoints, Difficulty difficulty) {
+import java.util.List;
+
+public record CreateChallengeCommand(
+    TeacherId teacherId, 
+    String name, 
+    String description, 
+    Integer experiencePoints, 
+    Difficulty difficulty,
+    List<String> tags
+) {
 }

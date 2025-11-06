@@ -1,4 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource;
 
-public record UpdateCodeVersionResource(String code) {
+import java.util.Optional;
+
+public record UpdateCodeVersionResource(Optional<String> code, Optional<String> functionName) {
 }

@@ -3,7 +3,9 @@ package com.levelupjourney.microservicechallenges.challenges.application.interna
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddCodeVersionCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateCodeVersionCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeVersionId;
+import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionCommandService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.CodeVersionRepository;
 import jakarta.transaction.Transactional;
@@ -13,20 +15,31 @@ import org.springframework.stereotype.Service;
 public class CodeVersionCommandServiceImpl implements CodeVersionCommandService {
 
     private final CodeVersionRepository codeVersionRepository;
+    private final ChallengeQueryService challengeQueryService;
     
-    public CodeVersionCommandServiceImpl(CodeVersionRepository codeVersionRepository) {
+    public CodeVersionCommandServiceImpl(CodeVersionRepository codeVersionRepository,
+                                       ChallengeQueryService challengeQueryService) {
         this.codeVersionRepository = codeVersionRepository;
+        this.challengeQueryService = challengeQueryService;
     }
 
     @Override
     @Transactional
     public CodeVersionId handle(AddCodeVersionCommand command) {
+        // Validate that the challenge exists
+        var challengeQuery = new GetChallengeByIdQuery(command.challengeId());
+        var challenge = challengeQueryService.handle(challengeQuery);
+        
+        if (challenge.isEmpty()) {
+            throw new IllegalArgumentException("Challenge not found with ID: " + command.challengeId().id());
+        }
+        
         // Check if a version already exists for this challenge and language
         var existingVersion = codeVersionRepository
                 .findByChallengeIdAndLanguage(command.challengeId().id(), command.language());
         
         if (existingVersion.isPresent()) {
-            throw new RuntimeException("Code version already exists for challenge and language");
+            throw new IllegalArgumentException("Code version already exists for challenge and language: " + command.language());
         }
         
         // Create new code version using constructor
@@ -42,10 +55,15 @@ public class CodeVersionCommandServiceImpl implements CodeVersionCommandService 
     public void handle(UpdateCodeVersionCommand command) {
         // Find code version by ID
         CodeVersion codeVersion = codeVersionRepository.findById(command.codeVersionId())
-                .orElseThrow(() -> new RuntimeException("Code version not found: " + command.codeVersionId().id()));
+                .orElseThrow(() -> new IllegalArgumentException("Code version not found: " + command.codeVersionId().id()));
         
-        // Update code using business method
-        codeVersion.updateInitialCode(command.code());
+        // Update code and function name using business methods with Optional handling
+        if (command.code().isPresent()) {
+            codeVersion.updateInitialCode(command.code().get());
+        }
+        if (command.functionName().isPresent()) {
+            codeVersion.updateFunctionName(command.functionName().get());
+        }
         
         // Save changes
         codeVersionRepository.save(codeVersion);

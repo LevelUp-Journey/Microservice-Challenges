@@ -15,11 +15,14 @@ public class SolutionResourceFromEntityAssembler {
             entity.getChallengeId().id().toString(),
             entity.getCodeVersionId().id().toString(),
             entity.getStudentId().id().toString(),
-            entity.getDetails().getAttempts(),
-            entity.getDetails().getCode(),
-            entity.getDetails().getLastAttemptAt() != null ? 
-                dateFormat.format(entity.getDetails().getLastAttemptAt()) : null,
-            entity.getDetails().getStatus().name()
+            entity.getAttempts(),
+            entity.getCode(),
+            entity.getLastAttemptAt() != null ?
+                dateFormat.format(entity.getLastAttemptAt()) : null,
+            entity.getStatus().name(),
+            entity.getScore() != null ? entity.getScore().pointsEarned() : 0,
+            entity.getScore() != null ? entity.getScore().maxPoints() : 0,
+            entity.getScore() != null ? entity.getScore().getSuccessPercentage() : 0.0
         );
     }
 }

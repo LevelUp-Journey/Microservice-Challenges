@@ -10,11 +10,15 @@ import java.util.UUID;
 
 public class CreateSolutionCommandFromResourceAssembler {
 
-    public static CreateSolutionCommand toCommandFromResource(CreateSolutionResource resource) {
+    public static CreateSolutionCommand toCommandFromResource(
+            String challengeId, 
+            String codeVersionId, 
+            CreateSolutionResource resource, 
+            String studentId) {
         return new CreateSolutionCommand(
-            new ChallengeId(UUID.fromString(resource.challengeId())),
-            new CodeVersionId(UUID.fromString(resource.codeVersionId())),
-            new StudentId(UUID.fromString(resource.studentId())),
+            new ChallengeId(UUID.fromString(challengeId)),
+            new CodeVersionId(UUID.fromString(codeVersionId)),
+            new StudentId(UUID.fromString(studentId)),
             resource.code()
         );
     }

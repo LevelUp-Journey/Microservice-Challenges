@@ -14,7 +14,8 @@ public class UpdateCodeVersionTestCommandFromResourceAssembler {
             resource.input(),
             resource.expectedOutput(),
             resource.customValidationCode(),
-            resource.failureMessage()
+            resource.failureMessage(),
+            resource.isSecret()
         );
     }
 }

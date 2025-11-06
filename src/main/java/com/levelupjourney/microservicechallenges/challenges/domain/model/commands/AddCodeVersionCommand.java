@@ -3,5 +3,5 @@ package com.levelupjourney.microservicechallenges.challenges.domain.model.comman
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.CodeLanguage;
 
-public record AddCodeVersionCommand(ChallengeId challengeId, CodeLanguage language, String defaultCode) {
+public record AddCodeVersionCommand(ChallengeId challengeId, CodeLanguage language, String defaultCode, String functionName) {
 }

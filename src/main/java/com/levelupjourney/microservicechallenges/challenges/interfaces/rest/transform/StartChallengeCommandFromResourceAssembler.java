@@ -10,10 +10,10 @@ import java.util.UUID;
 
 public class StartChallengeCommandFromResourceAssembler {
 
-    public static StartChallengeCommand toCommandFromResource(StartChallengeResource resource) {
+    public static StartChallengeCommand toCommandFromResource(StartChallengeResource resource, String studentId) {
         return new StartChallengeCommand(
             new ChallengeId(UUID.fromString(resource.challengeId())),
-            new StudentId(UUID.fromString(resource.studentId())),
+            new StudentId(UUID.fromString(studentId)),
             new CodeVersionId(UUID.fromString(resource.codeVersionId()))
         );
     }

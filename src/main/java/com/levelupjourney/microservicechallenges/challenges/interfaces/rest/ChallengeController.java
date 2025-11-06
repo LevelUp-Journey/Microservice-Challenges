@@ -1,16 +1,18 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
-import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllTagsQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetPublishedChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
-import com.levelupjourney.microservicechallenges.challenges.domain.services.TagQueryService;
+import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
+import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,8 +20,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,59 +31,120 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(value = "/api/v1/challenges", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Challenges", description = "Endpoints for managing coding challenges")
+@SecurityRequirement(name = "bearerAuth")
 public class ChallengeController {
 
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
+    private final CodeVersionQueryService codeVersionQueryService;
+    private final JwtUtil jwtUtil;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
-                               ChallengeQueryService challengeQueryService) {
+                               ChallengeQueryService challengeQueryService,
+                               CodeVersionQueryService codeVersionQueryService,
+                               JwtUtil jwtUtil) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
+        this.codeVersionQueryService = codeVersionQueryService;
+        this.jwtUtil = jwtUtil;
     }
 
     // Create a new challenge
     @PostMapping
-    public ResponseEntity<ChallengeResource> createChallenge(@RequestBody CreateChallengeResource resource) {
-        // Transform resource to domain command
-        var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Create challenge", description = "Create a new coding challenge. Only accessible by TEACHER and ADMIN roles. Teacher ID extracted from JWT token.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Challenge created successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - validation error (e.g., experience points exceed difficulty max score)"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<?> createChallenge(
+            @RequestBody CreateChallengeResource resource,
+            HttpServletRequest request) {
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            // Extract teacherId from JWT token
+            String teacherId = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Transform resource to domain command with teacherId from token
+            var command = CreateChallengeCommandFromResourceAssembler.toCommandFromResource(resource, teacherId);
 
-        // Execute command through domain service
-        var challengeId = challengeCommandService.handle(command);
+            // Execute command through domain service
+            var challengeId = challengeCommandService.handle(command);
 
-        // Retrieve created challenge for response
-        var query = new GetChallengeByIdQuery(challengeId);
-        var challenge = challengeQueryService.handle(query);
+            // Retrieve created challenge for response
+            var query = new GetChallengeByIdQuery(challengeId);
+            var challenge = challengeQueryService.handle(query);
 
-        // Transform domain entity to response resource
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.CREATED);
+            // Transform domain entity to response resource
+            if (challenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+                return new ResponseEntity<>(challengeResource, HttpStatus.CREATED);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors (e.g., experience points exceeding difficulty max score)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Validation error: " + e.getMessage()));
         }
-
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Get challenge by ID
+    // Ownership validation: Only the owner can view DRAFT/HIDDEN challenges, anyone can view PUBLISHED
     @GetMapping("/{challengeId}")
-    public ResponseEntity<ChallengeResource> getChallengeById(@PathVariable String challengeId) {
+    @Operation(summary = "Get challenge by ID", description = "Retrieve a specific challenge. Access control: PUBLISHED challenges are public, DRAFT/HIDDEN require ownership.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenge retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - not published and not owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> getChallengeById(
+            @PathVariable String challengeId,
+            HttpServletRequest request) {
+        
+        // Extract Authorization header from request
+        String authorizationHeader = request.getHeader("Authorization");
+        
         // Transform path variable to domain query
         var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
 
         // Execute query through domain service
-        var challenge = challengeQueryService.handle(query);
+        var challengeOptional = challengeQueryService.handle(query);
 
-        // Transform domain entity to response resource if found
-        if (challenge.isPresent()) {
-            var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
-            return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+        // Check if challenge exists
+        if (challengeOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("Challenge not found with id: " + challengeId));
         }
 
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        var challenge = challengeOptional.get();
+        
+        // Validate access based on challenge status
+        if (challenge.getStatus() != com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED) {
+            // Challenge is DRAFT or HIDDEN - only owner can access
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Access denied. This challenge is not published and you are not the owner."));
+            }
+        }
+        
+        // Transform domain entity to response resource
+        var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge);
+        return new ResponseEntity<>(challengeResource, HttpStatus.OK);
     }
 
     // Get all published challenges
     @GetMapping
+    @Operation(summary = "Get all published challenges", description = "Retrieve all challenges with PUBLISHED status. Public endpoint.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Published challenges retrieved successfully")
+    })
     public ResponseEntity<List<ChallengeResource>> getAllPublishedChallenges() {
         // Execute query for published challenges
         var query = new GetAllPublishedChallengesQuery();
@@ -93,14 +158,35 @@ public class ChallengeController {
         return new ResponseEntity<>(challengeResources, HttpStatus.OK);
     }
 
-    // Get challenges by teacher ID
+    // Get challenges by teacher ID (derived collection)
+    // Role-based filtering: Students see only PUBLISHED challenges, Teachers/Admins see all
     @GetMapping("/teachers/{teacherId}")
-    public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(@PathVariable String teacherId) {
-        // Transform path variable to domain query
-        var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
-
-        // Execute query through domain service
-        var challenges = challengeQueryService.handle(query);
+    @Operation(summary = "Get challenges by teacher", description = "Retrieve challenges by teacher ID. Role-based filtering: Students see only PUBLISHED, Teachers/Admins see all.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenges retrieved successfully")
+    })
+    public ResponseEntity<List<ChallengeResource>> getChallengesByTeacherId(
+            @PathVariable String teacherId,
+            HttpServletRequest request) {
+        
+        // Extract Authorization header from request
+        String authorizationHeader = request.getHeader("Authorization");
+        
+        // Extract user roles from JWT token
+        List<String> roles = jwtUtil.extractRoles(authorizationHeader);
+        
+        // Determine which query to use based on user role
+        List<com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge> challenges;
+        
+        if (roles.contains("ROLE_STUDENT")) {
+            // Students can only see PUBLISHED challenges
+            var query = new GetPublishedChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
+            challenges = challengeQueryService.handle(query);
+        } else {
+            // Teachers and Admins can see all challenges (DRAFT and PUBLISHED)
+            var query = new GetChallengesByTeacherIdQuery(new TeacherId(UUID.fromString(teacherId)));
+            challenges = challengeQueryService.handle(query);
+        }
 
         // Transform domain entities to response resources
         var challengeResources = challenges.stream()
@@ -111,10 +197,50 @@ public class ChallengeController {
     }
 
     // Update an existing challenge (including status changes like publishing)
+    // Only the challenge owner (teacher) can update their own challenges
     @PatchMapping("/{challengeId}")
-    public ResponseEntity<ChallengeResource> updateChallenge(@PathVariable String challengeId,
-                                                             @RequestBody UpdateChallengeResource resource) {
+    @Operation(
+        summary = "Update challenge", 
+        description = "Update an existing challenge. All fields are optional - only send the fields you want to update. " +
+                      "For example, to publish a challenge, send only: {\"status\": \"PUBLISHED\"}. " +
+                      "Only the challenge owner can make updates."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenge updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - validation error (e.g., experience points exceed difficulty max score)"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> updateChallenge(
+            @PathVariable String challengeId,
+            @RequestBody UpdateChallengeResource resource,
+            HttpServletRequest request) {
         try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+            
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+            
+            var challenge = challengeOptional.get();
+            
+            // Verify ownership: Only the teacher who created the challenge can update it
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to update this challenge. Only the challenge owner can make updates."));
+            }
+            
             // Transform resource to domain command
             var command = UpdateChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, resource);
 
@@ -122,119 +248,79 @@ public class ChallengeController {
             challengeCommandService.handle(command);
 
             // Retrieve updated challenge for response
-            var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
-            var challenge = challengeQueryService.handle(query);
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
 
             // Transform domain entity to response resource
-            if (challenge.isPresent()) {
-                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+            if (updatedChallenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get());
                 return new ResponseEntity<>(challengeResource, HttpStatus.OK);
             }
 
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (IllegalStateException e) {
             // Handle validation errors (e.g., publishing without required code versions/tests)
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException e) {
             // Handle invalid challenge ID or other argument errors
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
         }
     }
 
-    // Start a challenge (for students)
-    @PostMapping("/{challengeId}/start")
-    public ResponseEntity<StartChallengeResponseResource> startChallenge(@PathVariable String challengeId,
-                                                                        @RequestBody StartChallengeResource resource) {
-        try {
-            // Transform resource to domain command
-            var command = StartChallengeCommandFromResourceAssembler.toCommandFromResource(resource);
-
-            // Execute command through domain service (returns existing or new solution)
-            var result = challengeCommandService.handle(command);
-
-            // Transform command data and result to response resource
-            var responseResource = StartChallengeResponseResourceFromCommandAssembler.toResourceFromCommand(command, result);
-
-            return new ResponseEntity<>(responseResource, HttpStatus.OK);
-        } catch (IllegalStateException e) {
-            // Handle validation errors (e.g., challenge not published)
-            return new ResponseEntity<>(HttpStatus.CONFLICT);
-        } catch (IllegalArgumentException e) {
-            // Handle invalid challenge ID or code version ID
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Assign an existing tag to a challenge
-    @PostMapping("/{challengeId}/tags/{tagId}")
-    @Operation(summary = "Assign tag to challenge", description = "Assign an existing tag to a specific challenge")
+    // Delete a challenge by ID
+    // Only the challenge owner (teacher) can delete their own challenges
+    @DeleteMapping("/{challengeId}")
+    @Operation(summary = "Delete challenge", description = "Delete a challenge by ID. Only the challenge owner can delete their own challenges.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Tag successfully assigned to challenge"),
-        @ApiResponse(responseCode = "404", description = "Challenge or tag not found")
+        @ApiResponse(responseCode = "204", description = "Challenge deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
     })
-    public ResponseEntity<Void> assignTagToChallenge(@PathVariable String challengeId,
-                                                    @PathVariable String tagId) {
+    public ResponseEntity<?> deleteChallenge(
+            @PathVariable String challengeId,
+            HttpServletRequest request) {
         try {
-            // Transform path variables to domain command
-            var command = AssignTagToChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, tagId);
-
-            // Execute command through domain service
-            challengeCommandService.handle(command);
-
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Unassign a tag from a challenge
-    @DeleteMapping("/{challengeId}/tags/{tagId}")
-    @Operation(summary = "Unassign tag from challenge", description = "Unassign a specific tag from a challenge")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Tag successfully unassigned from challenge"),
-        @ApiResponse(responseCode = "404", description = "Challenge or tag not found")
-    })
-    public ResponseEntity<Void> unassignTagFromChallenge(@PathVariable String challengeId,
-                                                        @PathVariable String tagId) {
-        try {
-            // Transform path variables to domain command
-            var command = UnassignTagFromChallengeCommandFromResourceAssembler.toCommandFromResource(challengeId, tagId);
-
-            // Execute command through domain service
-            challengeCommandService.handle(command);
-
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    // Get tags for a specific challenge
-    @GetMapping("/{challengeId}/tags")
-    @Operation(summary = "Get challenge tags", description = "Retrieve all tags associated with a specific challenge")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully retrieved challenge tags"),
-        @ApiResponse(responseCode = "404", description = "Challenge not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid challenge ID format")
-    })
-    public ResponseEntity<List<TagResource>> getChallengeTags(@PathVariable String challengeId) {
-        try {
-            // Get challenge by ID
-            var query = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
-            var challenge = challengeQueryService.handle(query);
-
-            if (challenge.isPresent()) {
-                // Transform challenge tags to response resources
-                var tagResources = challenge.get().getTags().stream()
-                        .map(TagResourceFromEntityAssembler::toResourceFromEntity)
-                        .collect(Collectors.toList());
-
-                return new ResponseEntity<>(tagResources, HttpStatus.OK);
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+            
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+            
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+            
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
             }
+            
+            var challenge = challengeOptional.get();
+            
+            // Verify ownership: Only the teacher who created the challenge can delete it
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+            
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to delete this challenge. Only the challenge owner can delete it."));
+            }
+            
+            // Transform to domain command
+            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.DeleteChallengeCommand(
+                new ChallengeId(UUID.fromString(challengeId))
+            );
 
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            // Execute delete command through domain service
+            challengeCommandService.handle(command);
+
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            // Handle invalid challenge ID or other argument errors
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
         }
     }
+    
+    private record ErrorResponse(String message) {}
 }

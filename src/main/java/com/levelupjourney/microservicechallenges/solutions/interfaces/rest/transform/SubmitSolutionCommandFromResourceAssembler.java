@@ -9,11 +9,20 @@ import java.util.UUID;
 
 public class SubmitSolutionCommandFromResourceAssembler {
 
-    public static SubmitSolutionCommand toCommandFromResource(String solutionId, SubmitSolutionResource resource) {
+    public static SubmitSolutionCommand toCommandFromResource(String solutionId, SubmitSolutionResource resource, String studentId) {
         return new SubmitSolutionCommand(
             new SolutionId(UUID.fromString(solutionId)),
             resource.code(),
-            new StudentId(UUID.fromString(resource.studentId()))
+            new StudentId(UUID.fromString(studentId))
+        );
+    }
+    
+    // Overload for when code is provided directly (from solution entity)
+    public static SubmitSolutionCommand toCommandFromResource(String solutionId, String code, String studentId) {
+        return new SubmitSolutionCommand(
+            new SolutionId(UUID.fromString(solutionId)),
+            code,
+            new StudentId(UUID.fromString(studentId))
         );
     }
 }
