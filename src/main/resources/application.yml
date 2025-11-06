@@ -76,17 +76,20 @@ grpc:
 eureka:
   client:
     service-url:
-      defaultZone: ${SERVICE_DISCOVERY_URL}
+      defaultZone: ${SERVICE_DISCOVERY_URL:http://service-discovery:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
+    registry-fetch-interval-seconds: 10    # sincroniza lista de servicios cada 10s
+    healthcheck:
+      enabled: true                       # usa health endpoint para validación real
+
   instance:
-    prefer-ip-address: false
-    hostname: ${HOSTNAME:${spring.application.name}}
-    status-page-url: http://${eureka.instance.hostname}:${server.port:8083}/swagger-ui/index.html
-    health-check-url: http://${eureka.instance.hostname}:${server.port:8083}/actuator/health
-    instance-id: ${spring.application.name}:${server.port:8083}
-    lease-renewal-interval-in-seconds: 30
-    lease-expiration-duration-in-seconds: 90
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10  # envía heartbeat cada 10s
+    lease-expiration-duration-in-seconds: 30 # Eureka espera 30s antes de eliminarlo
+    instance-id: ${spring.application.name}:${server.port}:${random.value}
+    metadata-map:
+      zone: default
 
 # --- Configuración de Actuator ---
 management:
