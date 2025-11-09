@@ -12,6 +12,7 @@ import com.levelupjourney.microservicechallenges.solutions.domain.model.commands
 import com.levelupjourney.microservicechallenges.solutions.domain.model.events.ChallengeCompletedEvent;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.queries.GetSolutionByIdQuery;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionReportId;
+import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SolutionStatus;
 import com.levelupjourney.microservicechallenges.solutions.domain.model.valueobjects.SubmissionResult;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionCommandService;
 import com.levelupjourney.microservicechallenges.solutions.domain.services.SolutionQueryService;
@@ -81,9 +82,13 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
         }
 
         var existingSolution = solution.get();
+
+        // Capture the ORIGINAL status before any modifications
+        SolutionStatus originalStatus = existingSolution.getStatus();
+
         log.info("✅ Solution found:");
         log.info("  - Code Version ID: '{}'", existingSolution.getCodeVersionId().id());
-        log.info("  - Current status: '{}'", existingSolution.getStatus());
+        log.info("  - Current status: '{}'", originalStatus);
 
         // Record submission attempt to update lastAttemptAt timestamp
         existingSolution.recordSubmissionAttempt();
@@ -189,7 +194,42 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
                 scoringResult.getTimeTakenMinutes() + " min",
                 scoringResult.getFormattedTime());
 
-            // Assign score to solution
+            // Determine if this challenge was already completed
+            // Two scenarios for "already completed":
+            // 1. This solution already had SUCCESS status before this submission
+            // 2. Another solution for the same challenge already has SUCCESS status
+            boolean alreadyCompleted = false;
+            if (scoringResult.finalScore() > 0 && executionResult.successful()) {
+                log.info("🔍 Checking if challenge was already completed...");
+
+                // Check if this specific solution was already marked as SUCCESS
+                boolean thisWasAlreadySuccess = (originalStatus == SolutionStatus.SUCCESS);
+
+                // Check if another solution for this challenge is already SUCCESS
+                boolean anotherSolutionIsSuccess = checkIfChallengeWasAlreadyCompleted(
+                    command.studentId().id(),
+                    existingSolution.getChallengeId().id(),
+                    existingSolution.getId().id()
+                );
+
+                alreadyCompleted = thisWasAlreadySuccess || anotherSolutionIsSuccess;
+
+                log.info("🔍 Challenge completion status:");
+                log.info("  - Original Status of This Solution: '{}'", originalStatus);
+                log.info("  - This Solution Was Already SUCCESS: {}", thisWasAlreadySuccess);
+                log.info("  - Another Solution Is SUCCESS: {}", anotherSolutionIsSuccess);
+                log.info("  - Final alreadyCompleted Flag: {}", alreadyCompleted);
+
+                if (alreadyCompleted) {
+                    log.info("  ⚠️ Challenge was already completed (either this solution or another)");
+                    log.info("  ℹ️ Profile Service should NOT award points for this completion");
+                } else {
+                    log.info("  ✅ First time completing this challenge successfully");
+                    log.info("  ℹ️ Profile Service SHOULD award points for this completion");
+                }
+            }
+
+            // Assign score to solution (this may change status to SUCCESS)
             existingSolution.assignScore(scoringResult.finalScore(), challenge.experiencePoints());
             solutionRepository.save(existingSolution);
             log.info("✅ Score saved to solution");
@@ -215,6 +255,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
                     scoringResult.scoreMultiplier(),
                     scoringResult.penaltyApplied(),
                     scoringReason,
+                    alreadyCompleted, // Flag to prevent duplicate point awards
                     LocalDateTime.now()
                 );
 
@@ -222,6 +263,7 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
                 log.info("  - Score Multiplier: {}%", scoringResult.scoreMultiplier());
                 log.info("  - Penalty Applied: {}", scoringResult.penaltyApplied());
                 log.info("  - Scoring Reason: {}", scoringReason);
+                log.info("  - Already Completed: {}", alreadyCompleted);
 
                 kafkaProducerService.publishChallengeCompleted(event);
                 log.info("✅ Event published successfully");
@@ -357,5 +399,43 @@ public class SolutionCommandServiceImpl implements SolutionCommandService {
 
         // Convert milliseconds to seconds
         return timeTakenMillis / 1000;
+    }
+
+    /**
+     * Check if the student had already completed this challenge before the current submission.
+     * A challenge is considered "already completed" if there exists another solution for the same
+     * student and challenge with SUCCESS status, excluding the current solution being evaluated.
+     *
+     * This prevents the Profile Service from awarding duplicate points when a student
+     * re-submits a solution for a challenge they've already completed successfully.
+     *
+     * @param studentId The student's ID
+     * @param challengeId The challenge ID
+     * @param currentSolutionId The current solution ID being evaluated (to exclude from search)
+     * @return true if the student had previously completed this challenge, false otherwise
+     */
+    private boolean checkIfChallengeWasAlreadyCompleted(UUID studentId, UUID challengeId, UUID currentSolutionId) {
+        log.info("🔍 Checking if challenge was already completed by student...");
+        log.info("  - Student ID: '{}'", studentId);
+        log.info("  - Challenge ID: '{}'", challengeId);
+        log.info("  - Current Solution ID: '{}'", currentSolutionId);
+
+        // Find all solutions for this student and challenge
+        var allSolutions = solutionRepository.findByStudentIdAndChallengeId(studentId, challengeId);
+
+        log.info("  - Found {} total solutions for this student and challenge", allSolutions.size());
+
+        // Check if any solution (excluding the current one) has SUCCESS status
+        boolean wasAlreadyCompleted = allSolutions.stream()
+            .filter(solution -> !solution.getId().id().equals(currentSolutionId)) // Exclude current solution
+            .anyMatch(solution -> solution.getStatus() == SolutionStatus.SUCCESS); // Check for SUCCESS status
+
+        if (wasAlreadyCompleted) {
+            log.info("  ✅ Found previous successful completion - alreadyCompleted = true");
+        } else {
+            log.info("  ℹ️ No previous successful completion found - alreadyCompleted = false");
+        }
+
+        return wasAlreadyCompleted;
     }
 }
