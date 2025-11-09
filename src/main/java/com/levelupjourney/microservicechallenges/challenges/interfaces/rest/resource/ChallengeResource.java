@@ -1,6 +1,7 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource;
 
 import java.util.List;
+import java.util.UUID;
 
 public record ChallengeResource(
     String id,
@@ -11,6 +12,8 @@ public record ChallengeResource(
     String difficulty,
     String status,
     List<String> tags,
-    List<StarResource> stars
+    List<StarResource> stars,
+    List<UUID> guides,
+    Integer maxAttemptsBeforeGuides
 ) {
 }

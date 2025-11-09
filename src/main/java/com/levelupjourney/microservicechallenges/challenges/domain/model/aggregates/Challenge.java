@@ -57,6 +57,14 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     @Column(name = "tag")
     private List<String> tags = new ArrayList<>();
 
+    @ElementCollection
+    @CollectionTable(name = "challenge_guides", joinColumns = @JoinColumn(name = "challenge_id"))
+    @Column(name = "guide_id")
+    private List<UUID> guides = new ArrayList<>();
+
+    @Column(name = "max_attempts_before_guides")
+    private Integer maxAttemptsBeforeGuides;
+
     public Challenge(CreateChallengeCommand command) {
         this.id = new ChallengeId(UUID.randomUUID());
         this.teacherId = command.teacherId();
@@ -75,6 +83,8 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
         this.difficulty = command.difficulty();
         this.status = ChallengeStatus.DRAFT;
         this.tags = command.tags() != null ? new ArrayList<>(command.tags()) : new ArrayList<>();
+        this.guides = command.guides() != null ? new ArrayList<>(command.guides()) : new ArrayList<>();
+        this.maxAttemptsBeforeGuides = command.maxAttemptsBeforeGuides();
     }
     
     // Business methods
@@ -264,5 +274,32 @@ public class Challenge extends AuditableAbstractAggregateRoot<Challenge> {
     public boolean hasStarred(String userId) {
         if (userId == null) return false;
         return this.stars.stream().anyMatch(star -> star.getUserId().equals(userId));
+    }
+
+    // Helper method to add a guide to the challenge
+    public void addGuide(UUID guideId) {
+        if (guideId != null && !this.guides.contains(guideId)) {
+            this.guides.add(guideId);
+        }
+    }
+
+    // Helper method to remove a guide from the challenge
+    public void removeGuide(UUID guideId) {
+        if (guideId != null) {
+            this.guides.remove(guideId);
+        }
+    }
+
+    // Helper method to check if a guide exists in the challenge
+    public boolean hasGuide(UUID guideId) {
+        if (guideId == null) return false;
+        return this.guides.contains(guideId);
+    }
+
+    // Helper method to update maxAttemptsBeforeGuides
+    public void updateMaxAttemptsBeforeGuides(Integer maxAttempts) {
+        if (maxAttempts != null && maxAttempts >= 0) {
+            this.maxAttemptsBeforeGuides = maxAttempts;
+        }
     }
 }

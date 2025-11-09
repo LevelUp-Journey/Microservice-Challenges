@@ -2,8 +2,10 @@ package com.levelupjourney.microservicechallenges.challenges.application.interna
 
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.CodeVersion;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.DeleteChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.RemoveGuideCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeResult;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
@@ -126,5 +128,33 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
         // Delete the challenge from repository
         challengeRepository.delete(challenge);
+    }
+
+    @Override
+    @Transactional
+    public void handle(AddGuideCommand command) {
+        // Find the challenge by ID
+        Challenge challenge = challengeRepository.findById(command.challengeId())
+                .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
+
+        // Add guide using business method
+        challenge.addGuide(command.guideId());
+
+        // Save the updated challenge
+        challengeRepository.save(challenge);
+    }
+
+    @Override
+    @Transactional
+    public void handle(RemoveGuideCommand command) {
+        // Find the challenge by ID
+        Challenge challenge = challengeRepository.findById(command.challengeId())
+                .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
+
+        // Remove guide using business method
+        challenge.removeGuide(command.guideId());
+
+        // Save the updated challenge
+        challengeRepository.save(challenge);
     }
 }
