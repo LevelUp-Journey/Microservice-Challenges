@@ -20,7 +20,9 @@ public class ChallengeResourceFromEntityAssembler {
             entity.getTags(), // Already List<String>
             entity.getStars().stream()
                 .map(star -> new StarResource(star.getUserId(), star.getStarredAt()))
-                .collect(Collectors.toList())
+                .collect(Collectors.toList()),
+            entity.getGuides(), // List<UUID>
+            entity.getMaxAttemptsBeforeGuides()
         );
     }
 }

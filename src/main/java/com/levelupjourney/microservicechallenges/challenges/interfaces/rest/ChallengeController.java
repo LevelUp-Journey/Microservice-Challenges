@@ -321,6 +321,132 @@ public class ChallengeController {
                 .body(new ErrorResponse("Invalid request: " + e.getMessage()));
         }
     }
-    
+
+    // Add a guide to a challenge
+    @PostMapping("/{challengeId}/guides/{guideId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Add guide to challenge", description = "Add a learning guide to a challenge. Only the challenge owner can add guides.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Guide added successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> addGuide(
+            @PathVariable String challengeId,
+            @PathVariable String guideId,
+            HttpServletRequest request) {
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+
+            var challenge = challengeOptional.get();
+
+            // Verify ownership
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to modify this challenge. Only the challenge owner can add guides."));
+            }
+
+            // Create command
+            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                UUID.fromString(guideId)
+            );
+
+            // Execute command
+            challengeCommandService.handle(command);
+
+            // Retrieve updated challenge for response
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
+
+            if (updatedChallenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get());
+                return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // Remove a guide from a challenge
+    @DeleteMapping("/{challengeId}/guides/{guideId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Remove guide from challenge", description = "Remove a learning guide from a challenge. Only the challenge owner can remove guides.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Guide removed successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> removeGuide(
+            @PathVariable String challengeId,
+            @PathVariable String guideId,
+            HttpServletRequest request) {
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+
+            var challenge = challengeOptional.get();
+
+            // Verify ownership
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to modify this challenge. Only the challenge owner can remove guides."));
+            }
+
+            // Create command
+            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.RemoveGuideCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                UUID.fromString(guideId)
+            );
+
+            // Execute command
+            challengeCommandService.handle(command);
+
+            // Retrieve updated challenge for response
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
+
+            if (updatedChallenge.isPresent()) {
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get());
+                return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
+        }
+    }
+
     private record ErrorResponse(String message) {}
 }
