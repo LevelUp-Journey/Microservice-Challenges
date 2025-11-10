@@ -6,6 +6,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.queries
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetPublishedChallengesByTeacherIdQuery;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.SearchPublishedChallengesQuery;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +17,6 @@ public interface ChallengeQueryService {
     List<Challenge> handle(GetChallengesByTeacherIdQuery query);
     List<Challenge> handle(GetPublishedChallengesByTeacherIdQuery query);
     List<String> handle(GetAllChallengeTagsQuery query);
+    List<Challenge> handle(SearchPublishedChallengesQuery query);
 }
+

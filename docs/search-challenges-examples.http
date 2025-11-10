@@ -1,0 +1,116 @@
+### ===================================================
+### SEARCH PUBLISHED CHALLENGES ENDPOINT
+### ===================================================
+
+### Variables
+@baseUrl = http://localhost:8083/api/v1
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.YOUR_TOKEN_HERE
+
+### 1. Search by name - find challenges containing "hello"
+GET {{baseUrl}}/challenges/search?name=hello
+Authorization: Bearer {{token}}
+
+### 2. Search by partial name - find challenges containing "h"
+GET {{baseUrl}}/challenges/search?name=h
+Authorization: Bearer {{token}}
+
+### 3. Search by difficulty - EASY challenges only
+GET {{baseUrl}}/challenges/search?difficulty=EASY
+Authorization: Bearer {{token}}
+
+### 4. Search by difficulty - MEDIUM challenges only
+GET {{baseUrl}}/challenges/search?difficulty=MEDIUM
+Authorization: Bearer {{token}}
+
+### 5. Search by difficulty - HARD challenges only
+GET {{baseUrl}}/challenges/search?difficulty=HARD
+Authorization: Bearer {{token}}
+
+### 6. Search combining name and difficulty
+GET {{baseUrl}}/challenges/search?name=sort&difficulty=MEDIUM
+Authorization: Bearer {{token}}
+
+### 7. Search by tags - find challenges with "arrays" or "loops"
+GET {{baseUrl}}/challenges/search?tags=arrays,loops
+Authorization: Bearer {{token}}
+
+### 8. Search by single tag
+GET {{baseUrl}}/challenges/search?tags=algorithms
+Authorization: Bearer {{token}}
+
+### 9. Search combining name, difficulty and tags
+GET {{baseUrl}}/challenges/search?name=find&difficulty=HARD&tags=algorithms,binary-search
+Authorization: Bearer {{token}}
+
+### 10. Search with no filters (returns all published challenges)
+GET {{baseUrl}}/challenges/search
+Authorization: Bearer {{token}}
+
+### 11. Search case-insensitive name
+GET {{baseUrl}}/challenges/search?name=HELLO
+Authorization: Bearer {{token}}
+
+### 12. Search with URL-encoded spaces
+GET {{baseUrl}}/challenges/search?name=hello%20world
+Authorization: Bearer {{token}}
+
+### ===================================================
+### COMPARISON WITH EXISTING ENDPOINTS
+### ===================================================
+
+### Get all published challenges (for comparison)
+GET {{baseUrl}}/challenges
+Authorization: Bearer {{token}}
+
+### Get challenge by ID (for comparison)
+GET {{baseUrl}}/challenges/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer {{token}}
+
+### ===================================================
+### TESTING SCENARIOS
+### ===================================================
+
+### Scenario 1: Student looking for easy Python challenges
+GET {{baseUrl}}/challenges/search?name=python&difficulty=EASY
+Authorization: Bearer {{token}}
+
+### Scenario 2: Teacher looking for algorithm challenges
+GET {{baseUrl}}/challenges/search?tags=algorithms,data-structures
+Authorization: Bearer {{token}}
+
+### Scenario 3: Student searching for "loop" related challenges
+GET {{baseUrl}}/challenges/search?name=loop
+Authorization: Bearer {{token}}
+
+### Scenario 4: Finding medium challenges about sorting
+GET {{baseUrl}}/challenges/search?name=sort&difficulty=MEDIUM&tags=sorting,arrays
+Authorization: Bearer {{token}}
+
+### ===================================================
+### EDGE CASES
+### ===================================================
+
+### Edge Case 1: Empty name parameter
+GET {{baseUrl}}/challenges/search?name=
+Authorization: Bearer {{token}}
+
+### Edge Case 2: Invalid difficulty value (should return empty or ignore)
+GET {{baseUrl}}/challenges/search?difficulty=INVALID
+Authorization: Bearer {{token}}
+
+### Edge Case 3: Non-existent challenge name
+GET {{baseUrl}}/challenges/search?name=ThisChallengeDoesNotExist123456789
+Authorization: Bearer {{token}}
+
+### Edge Case 4: Special characters in name
+GET {{baseUrl}}/challenges/search?name=c++
+Authorization: Bearer {{token}}
+
+### ===================================================
+### NOTES
+### ===================================================
+# - All searches return ONLY challenges with status = PUBLISHED
+# - Name search is case-insensitive and uses partial matching (LIKE)
+# - Multiple tags are treated as OR (at least one must match)
+# - Multiple filters are combined with AND logic
+# - Empty or no filters return all published challenges

@@ -1,5 +1,6 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
@@ -148,6 +149,41 @@ public class ChallengeController {
     public ResponseEntity<List<ChallengeResource>> getAllPublishedChallenges() {
         // Execute query for published challenges
         var query = new GetAllPublishedChallengesQuery();
+        var challenges = challengeQueryService.handle(query);
+
+        // Transform domain entities to response resources
+        var challengeResources = challenges.stream()
+                .map(ChallengeResourceFromEntityAssembler::toResourceFromEntity)
+                .collect(Collectors.toList());
+
+        return new ResponseEntity<>(challengeResources, HttpStatus.OK);
+    }
+
+    // Search published challenges with filters
+    @GetMapping("/search")
+    @Operation(
+        summary = "Search published challenges", 
+        description = "Search challenges with PUBLISHED status using optional filters. " +
+                      "All filters are optional and can be combined. " +
+                      "Examples: /challenges/search?name=hello, /challenges/search?name=h&difficulty=EASY"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenges found successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid filter parameters")
+    })
+    public ResponseEntity<List<ChallengeResource>> searchPublishedChallenges(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) String tags) {
+        
+        // Create search query with filters
+        var query = new com.levelupjourney.microservicechallenges.challenges.domain.model.queries.SearchPublishedChallengesQuery(
+            name,
+            difficulty,
+            tags
+        );
+
+        // Execute search query
         var challenges = challengeQueryService.handle(query);
 
         // Transform domain entities to response resources
@@ -362,7 +398,7 @@ public class ChallengeController {
             }
 
             // Create command
-            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand(
+            var command = new AddGuideCommand(
                 new ChallengeId(UUID.fromString(challengeId)),
                 UUID.fromString(guideId)
             );

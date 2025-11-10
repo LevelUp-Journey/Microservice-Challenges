@@ -3,6 +3,7 @@ package com.levelupjourney.microservicechallenges.challenges.infrastructure.pers
 import com.levelupjourney.microservicechallenges.challenges.domain.model.aggregates.Challenge;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.Difficulty;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,4 +29,17 @@ public interface ChallengeRepository extends JpaRepository<Challenge, ChallengeI
     // Find published challenges
     @Query("SELECT c FROM Challenge c WHERE c.status = com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED")
     List<Challenge> findPublishedChallenges();
+
+    // Search published challenges by name (case-insensitive, partial match)
+    @Query("SELECT c FROM Challenge c WHERE c.status = com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED AND LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Challenge> searchPublishedChallengesByName(@Param("name") String name);
+
+    // Search published challenges by name and difficulty
+    @Query("SELECT c FROM Challenge c WHERE c.status = com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED AND LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')) AND c.difficulty = :difficulty")
+    List<Challenge> searchPublishedChallengesByNameAndDifficulty(@Param("name") String name, @Param("difficulty") Difficulty difficulty);
+
+    // Search published challenges by difficulty only
+    @Query("SELECT c FROM Challenge c WHERE c.status = com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeStatus.PUBLISHED AND c.difficulty = :difficulty")
+    List<Challenge> searchPublishedChallengesByDifficulty(@Param("difficulty") Difficulty difficulty);
 }
+

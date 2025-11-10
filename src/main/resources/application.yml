@@ -22,7 +22,7 @@ spring:
     show-sql: false
     open-in-view: true
 
-  # --- Configuración de Kafka (Azure Event Hubs) ---
+  # --- Configuración de Kafka (Soporta Azure Event Hubs y Kafka estándar) ---
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:${MESSAGE_BROKER_URL:localhost:9092}}
     properties:
@@ -43,6 +43,18 @@ spring:
               type:
                 headers: false
 
+    consumer:
+      group-id: ${spring.application.name}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: "*"
+
     admin:
       auto-create: false
       fail-fast: false
@@ -56,8 +68,10 @@ jwt:
 
 # Kafka Topics Configuration
 kafka:
+  is-azure: ${IS_AZURE:false}  # Controla si se usa Azure Event Hubs (SASL_SSL) o Kafka estándar (PLAINTEXT)
   topics:
-    challenge-completed: challenge.completed
+    challenge-completed: ${KAFKA_TOPIC_CHALLENGE_COMPLETED:challenge.completed}
+    guide-challenge-added: ${KAFKA_TOPIC_GUIDE_CHALLENGE_ADDED:guides.challenge.added.v1}
 
 # CORRECTED gRPC Configuration - Fixed address format
 grpc:
