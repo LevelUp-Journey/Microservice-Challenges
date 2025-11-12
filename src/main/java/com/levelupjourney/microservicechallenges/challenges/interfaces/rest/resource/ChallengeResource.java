@@ -14,6 +14,8 @@ public record ChallengeResource(
     List<String> tags,
     List<StarResource> stars,
     List<UUID> guides,
-    Integer maxAttemptsBeforeGuides
+    Integer maxAttemptsBeforeGuides,
+    boolean userLiked,
+    long likesCount
 ) {
 }

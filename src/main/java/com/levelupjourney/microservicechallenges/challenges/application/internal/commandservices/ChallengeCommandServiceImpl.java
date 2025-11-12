@@ -5,34 +5,43 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.aggrega
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.CreateChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.DeleteChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.LikeChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.RemoveGuideCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.StartChallengeResult;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UnlikeChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UpdateChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.entities.ChallengeLike;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.events.ChallengeStartedEvent;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetCodeVersionByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.ChallengeId;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
 import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeRepository;
+import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeLikeRepository;
 import com.levelupjourney.microservicechallenges.solutions.interfaces.acl.SolutionsAcl;
 import jakarta.transaction.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
     private final ChallengeRepository challengeRepository;
+    private final ChallengeLikeRepository challengeLikeRepository;
     private final CodeVersionQueryService codeVersionQueryService;
     private final ApplicationEventPublisher eventPublisher;
     private final SolutionsAcl solutionsAcl;
 
     public ChallengeCommandServiceImpl(ChallengeRepository challengeRepository,
+                                     ChallengeLikeRepository challengeLikeRepository,
                                      CodeVersionQueryService codeVersionQueryService,
                                      ApplicationEventPublisher eventPublisher,
                                      SolutionsAcl solutionsAcl) {
         this.challengeRepository = challengeRepository;
+        this.challengeLikeRepository = challengeLikeRepository;
         this.codeVersionQueryService = codeVersionQueryService;
         this.eventPublisher = eventPublisher;
         this.solutionsAcl = solutionsAcl;
@@ -156,5 +165,53 @@ public class ChallengeCommandServiceImpl implements ChallengeCommandService {
 
         // Save the updated challenge
         challengeRepository.save(challenge);
+    }
+
+    @Override
+    @Transactional
+    public void handle(LikeChallengeCommand command) {
+        // Validate challenge exists
+        if (!challengeRepository.existsById(command.challengeId())) {
+            throw new IllegalArgumentException("Challenge not found with id: " + command.challengeId().id());
+        }
+
+        // Check if user already liked this challenge
+        UUID userUUID = UUID.fromString(command.userId());
+        boolean alreadyLiked = challengeLikeRepository.existsByChallengeIdAndUserId(
+            command.challengeId().id(), 
+            userUUID
+        );
+
+        if (alreadyLiked) {
+            throw new IllegalStateException("User has already liked this challenge");
+        }
+
+        // Create and save like
+        ChallengeLike like = new ChallengeLike(command.challengeId(), userUUID);
+        challengeLikeRepository.save(like);
+    }
+
+    @Override
+    @Transactional
+    public void handle(UnlikeChallengeCommand command) {
+        // Validate challenge exists
+        if (!challengeRepository.existsById(command.challengeId())) {
+            throw new IllegalArgumentException("Challenge not found with id: " + command.challengeId().id());
+        }
+
+        UUID userUUID = UUID.fromString(command.userId());
+        
+        // Check if like exists
+        boolean likeExists = challengeLikeRepository.existsByChallengeIdAndUserId(
+            command.challengeId().id(), 
+            userUUID
+        );
+
+        if (!likeExists) {
+            throw new IllegalStateException("User has not liked this challenge");
+        }
+
+        // Delete the like
+        challengeLikeRepository.deleteByChallengeIdAndUserId(command.challengeId().id(), userUUID);
     }
 }
