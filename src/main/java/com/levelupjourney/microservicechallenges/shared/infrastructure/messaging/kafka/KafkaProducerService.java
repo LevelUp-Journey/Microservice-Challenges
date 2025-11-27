@@ -31,8 +31,9 @@ public class KafkaProducerService {
     /**
      * Publish a ChallengeCompletedEvent to Kafka.
      * The event will be consumed by the Profile Service to update student scores and rankings.
+     * The alreadyCompleted flag indicates whether points should be awarded (false = award, true = skip).
      *
-     * @param event The challenge completed event containing score information
+     * @param event The challenge completed event containing score information and completion status
      */
     public void publishChallengeCompleted(ChallengeCompletedEvent event) {
         log.info("📤 Publishing ChallengeCompletedEvent to Azure Event Hub (Kafka):");
@@ -41,6 +42,8 @@ public class KafkaProducerService {
         log.info("  - Challenge ID: '{}'", event.getChallengeId());
         log.info("  - Points Earned: {}/{}", event.getExperiencePointsEarned(), event.getTotalExperiencePoints());
         log.info("  - Tests Passed: {}/{}", event.getPassedTests(), event.getTotalTests());
+        log.info("  - Already Completed: {} {}", event.getAlreadyCompleted(),
+            event.getAlreadyCompleted() ? "(Profile should NOT award points)" : "(Profile SHOULD award points)");
 
         CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(
             challengeCompletedTopic,
@@ -55,6 +58,7 @@ public class KafkaProducerService {
                 log.info("  - Partition: {}", result.getRecordMetadata().partition());
                 log.info("  - Offset: {}", result.getRecordMetadata().offset());
                 log.info("  - Timestamp: {}", result.getRecordMetadata().timestamp());
+                log.info("  - Already Completed Flag: {}", event.getAlreadyCompleted());
             } else {
                 log.error("❌ Failed to publish ChallengeCompletedEvent to Azure Event Hub for student '{}': {}",
                     event.getStudentId(), ex.getMessage(), ex);

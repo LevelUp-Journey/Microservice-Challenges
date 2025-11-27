@@ -6,6 +6,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -134,5 +135,21 @@ public class JwtUtil {
     public boolean hasRole(String token, String role) {
         List<String> roles = extractRoles(token);
         return roles.contains(role);
+    }
+
+    /**
+     * Generates a JWT token for testing purposes.
+     *
+     * @param userId The user ID to include in the token
+     * @param roles The list of roles to include in the token
+     * @return The generated JWT token
+     */
+    public String generateToken(String userId, List<String> roles) {
+        return JWT.create()
+                .withClaim("userId", userId)
+                .withClaim("roles", roles)
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600000)) // 1 hour
+                .sign(algorithm);
     }
 }

@@ -17,6 +17,10 @@ import java.time.LocalDateTime;
  * - scoreMultiplier: Percentage multiplier applied based on time performance (100%, 80%, 60%, 40%, 20%)
  * - timePenaltyApplied: Whether a time penalty was applied to the score
  * - scoringReason: Human-readable explanation of why this score was awarded
+ * <p>
+ * Completion Status:
+ * - alreadyCompleted: Indicates if the student had already completed this challenge before (true = already completed, false = first time completion)
+ *   This flag prevents the Profile Service from awarding duplicate points for challenges already completed successfully
  */
 @Getter
 public class ChallengeCompletedEvent {
@@ -34,6 +38,7 @@ public class ChallengeCompletedEvent {
     private final Integer scoreMultiplier;
     private final Boolean timePenaltyApplied;
     private final String scoringReason;
+    private final Boolean alreadyCompleted;
     private final LocalDateTime completedAt;
     private final LocalDateTime occurredOn;
 
@@ -51,6 +56,7 @@ public class ChallengeCompletedEvent {
             Integer scoreMultiplier,
             Boolean timePenaltyApplied,
             String scoringReason,
+            Boolean alreadyCompleted,
             LocalDateTime completedAt
     ) {
         this.studentId = studentId;
@@ -66,6 +72,7 @@ public class ChallengeCompletedEvent {
         this.scoreMultiplier = scoreMultiplier;
         this.timePenaltyApplied = timePenaltyApplied;
         this.scoringReason = scoringReason;
+        this.alreadyCompleted = alreadyCompleted;
         this.completedAt = completedAt;
         this.occurredOn = LocalDateTime.now();
     }

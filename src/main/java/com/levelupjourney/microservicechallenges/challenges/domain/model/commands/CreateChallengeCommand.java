@@ -4,6 +4,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.model.valueobjects.TeacherId;
 
 import java.util.List;
+import java.util.UUID;
 
 public record CreateChallengeCommand(
     TeacherId teacherId, 
@@ -11,6 +12,8 @@ public record CreateChallengeCommand(
     String description, 
     Integer experiencePoints, 
     Difficulty difficulty,
-    List<String> tags
+    List<String> tags,
+    List<UUID> guides,
+    Integer maxAttemptsBeforeGuides
 ) {
 }

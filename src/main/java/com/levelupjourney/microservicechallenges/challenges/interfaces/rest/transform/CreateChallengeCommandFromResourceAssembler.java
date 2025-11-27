@@ -25,7 +25,9 @@ public class CreateChallengeCommandFromResourceAssembler {
             resource.description(),
             resource.experiencePoints(),
             Difficulty.valueOf(resource.difficulty().toUpperCase()),
-            tags
+            tags,
+            resource.guides() != null ? resource.guides() : Collections.emptyList(),
+            resource.maxAttemptsBeforeGuides()
         );
     }
 }

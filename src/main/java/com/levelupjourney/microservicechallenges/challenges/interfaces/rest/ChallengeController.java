@@ -1,5 +1,8 @@
 package com.levelupjourney.microservicechallenges.challenges.interfaces.rest;
 
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.AddGuideCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.LikeChallengeCommand;
+import com.levelupjourney.microservicechallenges.challenges.domain.model.commands.UnlikeChallengeCommand;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetAllPublishedChallengesQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengeByIdQuery;
 import com.levelupjourney.microservicechallenges.challenges.domain.model.queries.GetChallengesByTeacherIdQuery;
@@ -9,6 +12,7 @@ import com.levelupjourney.microservicechallenges.challenges.domain.model.valueob
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeCommandService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.ChallengeQueryService;
 import com.levelupjourney.microservicechallenges.challenges.domain.services.CodeVersionQueryService;
+import com.levelupjourney.microservicechallenges.challenges.infrastructure.persistence.jpa.repositories.ChallengeLikeRepository;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.resource.*;
 import com.levelupjourney.microservicechallenges.challenges.interfaces.rest.transform.*;
 import com.levelupjourney.microservicechallenges.shared.infrastructure.security.JwtUtil;
@@ -37,15 +41,18 @@ public class ChallengeController {
     private final ChallengeCommandService challengeCommandService;
     private final ChallengeQueryService challengeQueryService;
     private final CodeVersionQueryService codeVersionQueryService;
+    private final ChallengeLikeRepository challengeLikeRepository;
     private final JwtUtil jwtUtil;
 
     public ChallengeController(ChallengeCommandService challengeCommandService,
                                ChallengeQueryService challengeQueryService,
                                CodeVersionQueryService codeVersionQueryService,
+                               ChallengeLikeRepository challengeLikeRepository,
                                JwtUtil jwtUtil) {
         this.challengeCommandService = challengeCommandService;
         this.challengeQueryService = challengeQueryService;
         this.codeVersionQueryService = codeVersionQueryService;
+        this.challengeLikeRepository = challengeLikeRepository;
         this.jwtUtil = jwtUtil;
     }
 
@@ -80,7 +87,14 @@ public class ChallengeController {
 
             // Transform domain entity to response resource
             if (challenge.isPresent()) {
-                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get());
+                // Fetch like data (newly created challenge has 0 likes and is not liked by creator)
+                UUID challengeUuid = challengeId.id();
+                UUID userUuid = UUID.fromString(teacherId);
+                
+                boolean userLiked = challengeLikeRepository.existsByChallengeIdAndUserId(challengeUuid, userUuid);
+                long likesCount = challengeLikeRepository.countByChallengeId(challengeUuid);
+                
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge.get(), userLiked, likesCount);
                 return new ResponseEntity<>(challengeResource, HttpStatus.CREATED);
             }
 
@@ -134,8 +148,16 @@ public class ChallengeController {
             }
         }
         
-        // Transform domain entity to response resource
-        var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge);
+        // Fetch like data
+        String userId = jwtUtil.extractUserId(authorizationHeader);
+        UUID challengeUuid = UUID.fromString(challengeId);
+        UUID userUuid = UUID.fromString(userId);
+        
+        boolean userLiked = challengeLikeRepository.existsByChallengeIdAndUserId(challengeUuid, userUuid);
+        long likesCount = challengeLikeRepository.countByChallengeId(challengeUuid);
+        
+        // Transform domain entity to response resource with like data
+        var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge, userLiked, likesCount);
         return new ResponseEntity<>(challengeResource, HttpStatus.OK);
     }
 
@@ -145,14 +167,104 @@ public class ChallengeController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Published challenges retrieved successfully")
     })
-    public ResponseEntity<List<ChallengeResource>> getAllPublishedChallenges() {
+    public ResponseEntity<List<ChallengeResource>> getAllPublishedChallenges(HttpServletRequest request) {
         // Execute query for published challenges
         var query = new GetAllPublishedChallengesQuery();
         var challenges = challengeQueryService.handle(query);
 
-        // Transform domain entities to response resources
+        // Extract user ID from JWT
+        String authorizationHeader = request.getHeader("Authorization");
+        String userId = jwtUtil.extractUserId(authorizationHeader);
+        UUID userUuid = UUID.fromString(userId);
+
+        // Batch fetch like data
+        List<UUID> challengeIds = challenges.stream()
+                .map(challenge -> challenge.getId().id())
+                .collect(Collectors.toList());
+
+        // Get likes count for all challenges
+        var likesCountResults = challengeLikeRepository.countByChallengeIdIn(challengeIds);
+        var likesCountMap = likesCountResults.stream()
+                .collect(Collectors.toMap(
+                        result -> (UUID) result[0],
+                        result -> (Long) result[1]
+                ));
+
+        // Get challenges liked by user
+        var likedChallengeIds = challengeLikeRepository.findLikedChallengeIdsByUserIdAndChallengeIdIn(challengeIds, userUuid);
+        var likedSet = likedChallengeIds.stream().collect(Collectors.toSet());
+
+        // Transform domain entities to response resources with like data
         var challengeResources = challenges.stream()
-                .map(ChallengeResourceFromEntityAssembler::toResourceFromEntity)
+                .map(challenge -> {
+                    UUID challengeId = challenge.getId().id();
+                    boolean userLiked = likedSet.contains(challengeId);
+                    long likesCount = likesCountMap.getOrDefault(challengeId, 0L);
+                    return ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge, userLiked, likesCount);
+                })
+                .collect(Collectors.toList());
+
+        return new ResponseEntity<>(challengeResources, HttpStatus.OK);
+    }
+
+    // Search published challenges with filters
+    @GetMapping("/search")
+    @Operation(
+        summary = "Search published challenges", 
+        description = "Search challenges with PUBLISHED status using optional filters. " +
+                      "All filters are optional and can be combined. " +
+                      "Examples: /challenges/search?name=hello, /challenges/search?name=h&difficulty=EASY"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Challenges found successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid filter parameters")
+    })
+    public ResponseEntity<List<ChallengeResource>> searchPublishedChallenges(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) String tags,
+            HttpServletRequest request) {
+        
+        // Create search query with filters
+        var query = new com.levelupjourney.microservicechallenges.challenges.domain.model.queries.SearchPublishedChallengesQuery(
+            name,
+            difficulty,
+            tags
+        );
+
+        // Execute search query
+        var challenges = challengeQueryService.handle(query);
+
+        // Extract user ID from JWT
+        String authorizationHeader = request.getHeader("Authorization");
+        String userId = jwtUtil.extractUserId(authorizationHeader);
+        UUID userUuid = UUID.fromString(userId);
+
+        // Batch fetch like data
+        List<UUID> challengeIds = challenges.stream()
+                .map(challenge -> challenge.getId().id())
+                .collect(Collectors.toList());
+
+        // Get likes count for all challenges
+        var likesCountResults = challengeLikeRepository.countByChallengeIdIn(challengeIds);
+        var likesCountMap = likesCountResults.stream()
+                .collect(Collectors.toMap(
+                        result -> (UUID) result[0],
+                        result -> (Long) result[1]
+                ));
+
+        // Get challenges liked by user
+        var likedChallengeIds = challengeLikeRepository.findLikedChallengeIdsByUserIdAndChallengeIdIn(challengeIds, userUuid);
+        var likedSet = likedChallengeIds.stream().collect(Collectors.toSet());
+
+        // Transform domain entities to response resources with like data
+        var challengeResources = challenges.stream()
+                .map(challenge -> {
+                    UUID challengeId = challenge.getId().id();
+                    boolean userLiked = likedSet.contains(challengeId);
+                    long likesCount = likesCountMap.getOrDefault(challengeId, 0L);
+                    return ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge, userLiked, likesCount);
+                })
                 .collect(Collectors.toList());
 
         return new ResponseEntity<>(challengeResources, HttpStatus.OK);
@@ -188,9 +300,35 @@ public class ChallengeController {
             challenges = challengeQueryService.handle(query);
         }
 
-        // Transform domain entities to response resources
+        // Extract user ID from JWT
+        String userId = jwtUtil.extractUserId(authorizationHeader);
+        UUID userUuid = UUID.fromString(userId);
+
+        // Batch fetch like data
+        List<UUID> challengeIds = challenges.stream()
+                .map(challenge -> challenge.getId().id())
+                .collect(Collectors.toList());
+
+        // Get likes count for all challenges
+        var likesCountResults = challengeLikeRepository.countByChallengeIdIn(challengeIds);
+        var likesCountMap = likesCountResults.stream()
+                .collect(Collectors.toMap(
+                        result -> (UUID) result[0],
+                        result -> (Long) result[1]
+                ));
+
+        // Get challenges liked by user
+        var likedChallengeIds = challengeLikeRepository.findLikedChallengeIdsByUserIdAndChallengeIdIn(challengeIds, userUuid);
+        var likedSet = likedChallengeIds.stream().collect(Collectors.toSet());
+
+        // Transform domain entities to response resources with like data
         var challengeResources = challenges.stream()
-                .map(ChallengeResourceFromEntityAssembler::toResourceFromEntity)
+                .map(challenge -> {
+                    UUID challengeId = challenge.getId().id();
+                    boolean userLiked = likedSet.contains(challengeId);
+                    long likesCount = likesCountMap.getOrDefault(challengeId, 0L);
+                    return ChallengeResourceFromEntityAssembler.toResourceFromEntity(challenge, userLiked, likesCount);
+                })
                 .collect(Collectors.toList());
 
         return new ResponseEntity<>(challengeResources, HttpStatus.OK);
@@ -252,7 +390,14 @@ public class ChallengeController {
 
             // Transform domain entity to response resource
             if (updatedChallenge.isPresent()) {
-                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get());
+                // Fetch like data
+                UUID challengeUuid = UUID.fromString(challengeId);
+                UUID userUuid = UUID.fromString(userIdFromToken);
+                
+                boolean userLiked = challengeLikeRepository.existsByChallengeIdAndUserId(challengeUuid, userUuid);
+                long likesCount = challengeLikeRepository.countByChallengeId(challengeUuid);
+                
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get(), userLiked, likesCount);
                 return new ResponseEntity<>(challengeResource, HttpStatus.OK);
             }
 
@@ -321,6 +466,217 @@ public class ChallengeController {
                 .body(new ErrorResponse("Invalid request: " + e.getMessage()));
         }
     }
-    
+
+    // Add a guide to a challenge
+    @PostMapping("/{challengeId}/guides/{guideId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Add guide to challenge", description = "Add a learning guide to a challenge. Only the challenge owner can add guides.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Guide added successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> addGuide(
+            @PathVariable String challengeId,
+            @PathVariable String guideId,
+            HttpServletRequest request) {
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+
+            var challenge = challengeOptional.get();
+
+            // Verify ownership
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to modify this challenge. Only the challenge owner can add guides."));
+            }
+
+            // Create command
+            var command = new AddGuideCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                UUID.fromString(guideId)
+            );
+
+            // Execute command
+            challengeCommandService.handle(command);
+
+            // Retrieve updated challenge for response
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
+
+            if (updatedChallenge.isPresent()) {
+                // Fetch like data
+                UUID challengeUuid = UUID.fromString(challengeId);
+                UUID userUuid = UUID.fromString(userIdFromToken);
+                
+                boolean userLiked = challengeLikeRepository.existsByChallengeIdAndUserId(challengeUuid, userUuid);
+                long likesCount = challengeLikeRepository.countByChallengeId(challengeUuid);
+                
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get(), userLiked, likesCount);
+                return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // Remove a guide from a challenge
+    @DeleteMapping("/{challengeId}/guides/{guideId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Remove guide from challenge", description = "Remove a learning guide from a challenge. Only the challenge owner can remove guides.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Guide removed successfully"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - not the challenge owner"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> removeGuide(
+            @PathVariable String challengeId,
+            @PathVariable String guideId,
+            HttpServletRequest request) {
+        try {
+            // Extract Authorization header from request
+            String authorizationHeader = request.getHeader("Authorization");
+
+            // Extract userId from JWT token
+            String userIdFromToken = jwtUtil.extractUserId(authorizationHeader);
+
+            // Retrieve the challenge to verify ownership
+            var getChallengeQuery = new GetChallengeByIdQuery(new ChallengeId(UUID.fromString(challengeId)));
+            var challengeOptional = challengeQueryService.handle(getChallengeQuery);
+
+            if (challengeOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Challenge not found with id: " + challengeId));
+            }
+
+            var challenge = challengeOptional.get();
+
+            // Verify ownership
+            String challengeOwnerId = challenge.getTeacherId().id().toString();
+
+            if (userIdFromToken == null || !userIdFromToken.equals(challengeOwnerId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("You are not authorized to modify this challenge. Only the challenge owner can remove guides."));
+            }
+
+            // Create command
+            var command = new com.levelupjourney.microservicechallenges.challenges.domain.model.commands.RemoveGuideCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                UUID.fromString(guideId)
+            );
+
+            // Execute command
+            challengeCommandService.handle(command);
+
+            // Retrieve updated challenge for response
+            var updatedChallenge = challengeQueryService.handle(getChallengeQuery);
+
+            if (updatedChallenge.isPresent()) {
+                // Fetch like data
+                UUID challengeUuid = UUID.fromString(challengeId);
+                UUID userUuid = UUID.fromString(userIdFromToken);
+                
+                boolean userLiked = challengeLikeRepository.existsByChallengeIdAndUserId(challengeUuid, userUuid);
+                long likesCount = challengeLikeRepository.countByChallengeId(challengeUuid);
+                
+                var challengeResource = ChallengeResourceFromEntityAssembler.toResourceFromEntity(updatedChallenge.get(), userLiked, likesCount);
+                return new ResponseEntity<>(challengeResource, HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // Like a challenge
+    @PostMapping("/{challengeId}/likes")
+    @Operation(summary = "Like a challenge", description = "Add a like to a challenge. Each user can like a challenge only once.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Like added successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - invalid challenge ID or user already liked"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> likeChallenge(
+            @PathVariable String challengeId,
+            HttpServletRequest request) {
+        try {
+            // Extract user ID from JWT
+            String authorizationHeader = request.getHeader("Authorization");
+            String userId = jwtUtil.extractUserId(authorizationHeader);
+
+            // Create and execute command
+            var command = new LikeChallengeCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                userId
+            );
+            challengeCommandService.handle(command);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new MessageResponse("Challenge liked successfully"));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    // Unlike a challenge
+    @DeleteMapping("/{challengeId}/likes")
+    @Operation(summary = "Unlike a challenge", description = "Remove a like from a challenge.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Like removed successfully"),
+        @ApiResponse(responseCode = "400", description = "Bad request - invalid challenge ID or user has not liked"),
+        @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<?> unlikeChallenge(
+            @PathVariable String challengeId,
+            HttpServletRequest request) {
+        try {
+            // Extract user ID from JWT
+            String authorizationHeader = request.getHeader("Authorization");
+            String userId = jwtUtil.extractUserId(authorizationHeader);
+
+            // Create and execute command
+            var command = new UnlikeChallengeCommand(
+                new ChallengeId(UUID.fromString(challengeId)),
+                userId
+            );
+            challengeCommandService.handle(command);
+
+            return ResponseEntity.noContent().build();
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    // Simple response records
+    private record MessageResponse(String message) {}
     private record ErrorResponse(String message) {}
 }
